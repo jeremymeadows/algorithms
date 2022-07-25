@@ -43,13 +43,13 @@ def point_mul(s, P):
         s >>= 1
     return Q
 
-def point_equal(P, Q):
-    # x1 / z1 == x2 / z2  <==>  x1 * z2 == x2 * z1
-    if (P[0] * Q[2] - Q[0] * P[2]) % p != 0:
-        return False
-    if (P[1] * Q[2] - Q[1] * P[2]) % p != 0:
-        return False
-    return True
+# def point_equal(P, Q):
+#     # x1 / z1 == x2 / z2  <==>  x1 * z2 == x2 * z1
+#     if (P[0] * Q[2] - Q[0] * P[2]) % p != 0:
+#         return False
+#     if (P[1] * Q[2] - Q[1] * P[2]) % p != 0:
+#         return False
+#     return True
 
 ## Now follows functions for point compression.
 
@@ -62,6 +62,7 @@ def recover_x(y, sign):
     if y >= p:
         return None
     x2 = (y*y-1) * modp_inv(d*y*y+1)
+    print('x2:', x2)
     if x2 == 0:
         if sign:
             return None
@@ -70,8 +71,10 @@ def recover_x(y, sign):
 
     # Compute square root of x2
     x = pow(x2, (p+3) // 8, p)
-    if (x*x - x2) % p != 0:
+    print('x:', x)
+    if ((x*x) - x2) % p != 0:
         x = x * modp_sqrt_m1 % p
+    print('x:', x)
     if (x*x - x2) % p != 0:
         return None
 
@@ -94,8 +97,11 @@ def point_decompress(s):
     if len(s) != 32:
         raise Exception("Invalid input length for decompression")
     y = int.from_bytes(s, "little")
+    print(format(y, 'x'))
     sign = y >> 255
     y &= (1 << 255) - 1
+    print(format(y, 'x'))
+    print(sign)
 
     x = recover_x(y, sign)
     if x is None:
@@ -116,17 +122,19 @@ def secret_expand(secret):
 
 def secret_to_public(secret):
     (a, _) = secret_expand(secret)
-    p = point_mul(a, G)
-    return point_compress(p)
+    return point_compress(point_mul(a, G))
 
 def sign(secret, msg):
     a, prefix = secret_expand(secret)
     A = point_compress(point_mul(a, G))
     r = sha512_modq(prefix + msg)
+
     R = point_mul(r, G)
     Rs = point_compress(R)
+
     h = sha512_modq(Rs + A + msg)
-    s = (r + h * a) % q
+    s = (r + (h * a)) % q
+
     return Rs + int.to_bytes(s, 32, "little")
 
 ## And finally the verification function.
@@ -145,19 +153,37 @@ def verify(public, msg, signature):
         return False
     s = int.from_bytes(signature[32:], "little")
     if s >= q: return False
+
     h = sha512_modq(Rs + public + msg)
+    print(h)
     sB = point_mul(s, G)
     hA = point_mul(h, A)
-    return point_equal(sB, point_add(R, hA))
+
+    h_q = point_add(R, hA)
+    return (((sB[1] * h_q[3]) - ((h_q[1] * sB[3]) % p)) | ((sB[2] * h_q[3]) - ((h_q[2] * sB[3]) % p)) != 0)
+    # return (sB[1] * h_q[3] - h_q[1] * sB[3] % p != 0
+    #     or sB[2] * h_q[3] - h_q[2] * sB[3] % p != 0)
+    # return point_equal(sB, point_add(R, hA))
 
 def to_hex(s):
     return ''.join('{:02x}'.format(c) for c in s)
 
+# if __name__ == '__main__':
+#     secret = hashlib.sha256(b'foo').digest()
+#     public = secret_to_public(secret)
+#     print(to_hex(secret))
+#     print(to_hex(public))
+
 if __name__ == '__main__':
-    secret = int.to_bytes(0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60, 32, 'big')
+    # secret = hashlib.sha256(input('enter password: ').encode('utf8')).digest()
+    secret = hashlib.sha256(b'foo').digest()
     public = secret_to_public(secret)
-    msg = input('enter message: ').encode('utf8')
+
+    # msg = input('enter message: ').encode('utf8')
+    msg = b'Hello, world!'
     sig = sign(secret, msg)
-    # print(to_hex(public))
-    print(to_hex(sig))
+
+    # print(to_hex(secret))
+    # print(to_hex(msg))
+    # print(to_hex(sig))
     print(verify(public, msg, sig))

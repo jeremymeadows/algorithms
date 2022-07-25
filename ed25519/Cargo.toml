@@ -2,11 +2,17 @@
 name = "env"
 version = "0.1.0"
 edition = "2021"
+default-run = "main"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 sha = { version = "*", path = "../sha" }
+encoding = { version = "*", path = "../encoding" }
 num-rational = "*"
 num-bigint = "*"
 num-traits = "*"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
