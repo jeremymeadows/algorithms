@@ -3,7 +3,6 @@
 pub use proc_macros::obfuscate;
 
 use std::fmt::{Debug, Display, Formatter};
-use std::hint;
 use std::lazy::SyncLazy;
 use std::ops::Deref;
 
@@ -45,7 +44,7 @@ impl Obfuscate for String {
         todo!()
     }
 
-    fn from_obfu_bytes(bytes: &[u8]) -> Self {
+    fn from_obfu_bytes(_bytes: &[u8]) -> Self {
         todo!()
     }
 }

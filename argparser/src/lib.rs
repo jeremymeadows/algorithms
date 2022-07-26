@@ -65,7 +65,7 @@ impl ArgParser {
                     },
                 );
             } else if arg.starts_with("-") {
-                let arg = arg
+                let _arg = arg
                     .trim_start_matches("-")
                     .splitn(2, "=")
                     .collect::<Vec<_>>();

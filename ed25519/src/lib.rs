@@ -1,24 +1,23 @@
-#![allow(soft_unstable)]
 #![feature(once_cell)]
 
 use num_bigint::{BigInt, Sign};
+use num_integer::Integer;
 use num_traits::{One, Pow, Zero};
-use std::io::Write;
 use std::lazy::SyncLazy;
 use std::ops::{Add, AddAssign, Mul};
 
-use sha::{sha256::Sha256, sha512::Sha512, Digest, Sha};
-use encoding;
+use sha::{sha512::Sha512, Digest, Sha};
 
 static P: SyncLazy<BigInt> = SyncLazy::new(|| BigInt::from(2).pow(255u8) - 19);
+
 static D: SyncLazy<BigInt> =
     SyncLazy::new(|| BigInt::from(121666).modpow(&(P.clone() - 2), &P) - 1);
-// static D: SyncLazy<BigInt> = SyncLazy::new(|| BigInt::from(-121665) * modp_inv(&BigInt::from(121666)) % &*P);
+
 static Q: SyncLazy<BigInt> =
     SyncLazy::new(|| BigInt::from(2).pow(252u8) + 0x14def9dea2f79cd65812631a5cf5d3edu128);
 
 static MODP_SQRT_M1: SyncLazy<BigInt> =
-    SyncLazy::new(|| BigInt::from(2).modpow(&(P.clone() - 1), &P));
+    SyncLazy::new(|| BigInt::from(2).modpow(&((P.clone() - 1) / 4), &P));
 
 static G: SyncLazy<Point> = SyncLazy::new(|| {
     let y = BigInt::from(4) * modp_inv(&BigInt::from(5)) % &*P;
@@ -39,11 +38,10 @@ fn modp_inv(x: &BigInt) -> BigInt {
 
 #[inline]
 fn sha512_modq(bytes: &[u8]) -> BigInt {
-    BigInt::from_bytes_le(Sign::Plus, &Sha512::hash(bytes).as_bytes()).modpow(&BigInt::one(), &*Q)
+    BigInt::from_bytes_le(Sign::Plus, &Sha512::hash(bytes).as_bytes()).mod_floor(&*Q)
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Point {
     x: BigInt,
     y: BigInt,
@@ -68,10 +66,10 @@ macro_rules! impl_point_add {
             type Output = Self;
 
             fn add(self, other: $t) -> Self::Output {
-                let a = ((&self.y - &self.x) * (&other.y - &other.x)).modpow(&BigInt::one(), &*P);
-                let b = ((self.y + &self.x) * (&other.y + &other.x)).modpow(&BigInt::one(), &*P);
-                let c = (BigInt::from(2) * self.t * &other.t * &*D).modpow(&BigInt::one(), &*P);
-                let d = (BigInt::from(2) * self.z * &other.z).modpow(&BigInt::one(), &*P);
+                let a = ((&self.y - &self.x) * (&other.y - &other.x)).mod_floor(&*P);
+                let b = ((self.y + &self.x) * (&other.y + &other.x)).mod_floor(&*P);
+                let c = (BigInt::from(2) * self.t * &other.t * &*D).mod_floor(&*P);
+                let d = (BigInt::from(2) * self.z * &other.z).mod_floor(&*P);
 
                 let e = &b - &a;
                 let f = &d - &c;
@@ -104,40 +102,18 @@ impl Mul<&BigInt> for Point {
     fn mul(mut self, s: &BigInt) -> Self::Output {
         let mut other = Point::new();
         let mut s = s.clone();
-        // let mut i = 0;
-        // let mut j = 0;
 
         while s > BigInt::zero() {
             if &s & BigInt::one() != BigInt::zero() {
-                // j += 1;
-                // other = self.clone() + &other;
                 other += self.clone();
             }
             self += self.clone();
             s = s >> 1;
-
-            // if true {
-            //     println!("{i}, {j}");
-            //     println!("s: {:#?}", s);
-            //     println!("p: {:#?}", self);
-            //     println!("q: {:#?}", other);
-            //     // return other;
-            // }
-            // i += 1
         }
 
         other
     }
 }
-
-// impl PartialEq for Point {
-//     fn eq(&self, other: &Self) -> bool {
-//         !(&self.x * &other.z - &other.x * &self.z % &*P != BigInt::zero()
-//             || &self.y * &other.z - &other.y * &self.z % &*P != BigInt::zero())
-//     }
-// }
-
-impl Eq for Point {}
 
 fn recover_x(y: &BigInt, sign: Sign) -> Option<BigInt> {
     if y >= &*P {
@@ -146,7 +122,6 @@ fn recover_x(y: &BigInt, sign: Sign) -> Option<BigInt> {
 
     let y2 = y * y;
     let x2: BigInt = (&y2 - 1) * modp_inv(&(&*D * &y2 + 1));
-    println!("x2: {x2}");
 
     if x2 == BigInt::zero() {
         if sign == Sign::Minus {
@@ -157,16 +132,15 @@ fn recover_x(y: &BigInt, sign: Sign) -> Option<BigInt> {
     }
 
     let mut x = x2.modpow(&BigInt::from((P.clone() + 3) / 8), &*P);
-    println!("x: {x}");
-    if ((&x * &x) - &x2).modpow(&BigInt::one(), &*P) != BigInt::zero() {
-        x = (&x * &*MODP_SQRT_M1).modpow(&BigInt::one(), &*P);
+    if ((&x * &x) - &x2).mod_floor(&*P) != BigInt::zero() {
+        x = (&x * &*MODP_SQRT_M1).mod_floor(&*P);
     }
-    println!("x: {x}");
-    if (&x * &x - &x2).modpow(&BigInt::one(), &*P) != BigInt::zero() {
+    if (&x * &x - &x2).mod_floor(&*P) != BigInt::zero() {
         return None;
     }
 
-    if (x.iter_u32_digits().next().unwrap() & 1) as u8 != if let Sign::Minus = sign { 1 } else { 0 } {
+    if (x.iter_u32_digits().next().unwrap() & 1) as u8 != if let Sign::Minus = sign { 1 } else { 0 }
+    {
         x = P.clone() - x;
     }
     Some(x)
@@ -174,8 +148,8 @@ fn recover_x(y: &BigInt, sign: Sign) -> Option<BigInt> {
 
 fn point_compress(p: &Point) -> (Sign, Vec<u8>) {
     let z_inv = modp_inv(&p.z);
-    let x = (&p.x * &z_inv).modpow(&BigInt::one(), &*P);
-    let y = (&p.y * &z_inv).modpow(&BigInt::one(), &*P);
+    let x = (&p.x * &z_inv).mod_floor(&*P);
+    let y = (&p.y * &z_inv).mod_floor(&*P);
 
     (
         y.sign(),
@@ -192,14 +166,17 @@ fn point_decompress(sign: Sign, bytes: &[u8]) -> Result<Point, &str> {
         return Err("Invalid point length for decompression");
     }
     let mut y = BigInt::from_bytes_le(sign, bytes);
-    println!("{:x}", y);
     let sign = &y >> 255;
-    // y &= BigInt::from((1 << 255) - 1);
     y &= (BigInt::one() << 255) - 1;
-    println!("{:x}", y);
-    println!("{}", sign);
 
-    let x = recover_x(&y, if sign > BigInt::zero() { Sign::Minus } else { Sign::Plus });
+    let x = recover_x(
+        &y,
+        if sign > BigInt::zero() {
+            Sign::Minus
+        } else {
+            Sign::Plus
+        },
+    );
     if x.is_none() {
         Err("Invalid point")
     } else {
@@ -207,7 +184,7 @@ fn point_decompress(sign: Sign, bytes: &[u8]) -> Result<Point, &str> {
             x: x.clone().unwrap(),
             y: y.clone(),
             z: BigInt::one(),
-            t: (x.unwrap() * y).modpow(&BigInt::one(), &*P),
+            t: (x.unwrap() * y).mod_floor(&*P),
         })
     }
 }
@@ -221,28 +198,25 @@ fn secret_expand(secret: &[u8; 32]) -> (BigInt, Vec<u8>) {
     (a, h[32..].to_vec())
 }
 
-fn secret_to_public(secret: &[u8; 32]) -> (Sign, Vec<u8>) {
+pub fn secret_to_public(secret: &[u8; 32]) -> (Sign, Vec<u8>) {
     let (a, _) = secret_expand(secret);
     point_compress(&(G.clone() * &a))
 }
 
-fn sign(secret: &[u8; 32], message: &[u8]) -> Vec<u8> {
-    let (a, prefix) = secret_expand(&secret);
+pub fn sign(secret: &[u8; 32], message: &[u8]) -> Vec<u8> {
+    let (secret, prefix) = secret_expand(&secret);
+    let a = point_compress(&(G.clone() * &secret)).1;
 
-    let A = point_compress(&(G.clone() * &a)).1;
     let r = sha512_modq(&[&prefix, message].concat());
-    let R = G.clone() * &r;
+    let mut sig = point_compress(&(G.clone() * &r)).1;
+    let hash = sha512_modq(&[&sig, &a, message].concat());
 
-    let mut Rs = point_compress(&R).1;
-
-    let h = sha512_modq(&[&Rs, &A, message].concat());
-    let s = (r + (h * a)).modpow(&BigInt::one(), &*Q);
-
-    Rs.append(&mut s.to_bytes_le().1[..32].to_owned());
-    Rs
+    let s = (r + (hash * secret)).mod_floor(&*Q);
+    sig.append(&mut s.to_bytes_le().1[..32].to_owned());
+    sig
 }
 
-fn verify(public: &[u8], msg: &[u8], signature: &[u8]) -> bool {
+pub fn verify(public: &[u8], msg: &[u8], signature: &[u8]) -> bool {
     if public.len() != 32 {
         panic!("bad public key length");
     }
@@ -250,53 +224,29 @@ fn verify(public: &[u8], msg: &[u8], signature: &[u8]) -> bool {
         panic!("bad signature length");
     }
 
-    let A = point_decompress(Sign::Plus, public);
-    println!("{:?}", A);
-    if A.is_err() {
-        return false;
-    }
-    let Rs = &signature[..32];
-    let R = point_decompress(Sign::Plus, &Rs);
-    if R.is_err() {
-        return false;
-    }
+    let a = match point_decompress(Sign::Plus, public) {
+        Ok(x) => x,
+        Err(_) => return false,
+    };
+
+    let sig = &signature[..32];
+    let r = match point_decompress(Sign::Plus, &sig) {
+        Ok(x) => x,
+        Err(_) => return false,
+    };
 
     let s = BigInt::from_bytes_le(Sign::Plus, &signature[32..]);
     if s >= *Q {
         return false;
     }
 
-    let h = sha512_modq(&[&Rs, public, msg].concat());
-    let sB = G.clone() * &s;
-    let hA = A.unwrap() * &h;
+    let h = a * &sha512_modq(&[&sig, public, msg].concat());
+    let p = G.clone() * &s;
+    let q = h + r;
 
-    let q = hA + R.unwrap();
-    ((&sB.x * &q.z) - (&q.x * &sB.z).modpow(&BigInt::one(), &*P)) | ((&sB.y * &q.z) - (&q.y * &sB.z).modpow(&BigInt::one(), &*P)) != BigInt::zero()
-}
-
-fn main() {
-    let mut input;
-
-    print!("enter password: ");
-    std::io::stdout().flush().unwrap();
-    input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-
-    let secret = Sha256::hash(input.trim().as_bytes());
-    let public = secret_to_public(&secret).1;
-
-    print!("enter message: ");
-    std::io::stdout().flush().unwrap();
-    input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-
-    let message = input.trim().as_bytes();
-    let sig = sign(&secret, &message);
-
-    println!("{}", encoding::b16_encode(&secret.as_bytes()).to_lowercase());
-    println!("{}", encoding::b16_encode(&message).to_lowercase());
-    println!("{}", encoding::b16_encode(&sig).to_lowercase());
-    println!("{}", verify(&public, &message, &sig))
+    ((&p.x * &q.z) - (&q.x * &p.z).mod_floor(&*P))
+        | ((&p.y * &q.z) - (&q.y * &p.z).mod_floor(&*P))
+        != BigInt::zero()
 }
 
 #[cfg(test)]
@@ -318,8 +268,16 @@ mod tests {
 
     static MESSAGE: &[u8] = b"Hello, world!";
 
+    static SIGNATURE: &[u8] = &[
+        0x98, 0x3c, 0x71, 0x7a, 0x1a, 0x92, 0xc7, 0x80, 0x04, 0x71, 0x7b, 0x80, 0x3a, 0xe4, 0xa0,
+        0xde, 0xe7, 0x1a, 0xe2, 0x60, 0x7a, 0xfe, 0xc4, 0xa8, 0xbd, 0x76, 0xee, 0x7a, 0x8f, 0xa8,
+        0x3d, 0x54, 0xf6, 0xac, 0xc1, 0x48, 0x84, 0xa4, 0xb2, 0xba, 0xea, 0x60, 0xf8, 0x61, 0x00,
+        0x15, 0xef, 0x71, 0x17, 0xe2, 0xdf, 0x17, 0x53, 0xb5, 0xf4, 0xe6, 0x03, 0xb5, 0x57, 0xef,
+        0x8b, 0xc2, 0xd8, 0x08,
+    ];
+
     #[test]
-    fn test_point_add() {
+    fn point_add() {
         assert_eq!(
             Point {
                 x: BigInt::from_str("-296018569523652896372234514327709550206908554287152058624460862838859047041084022801327206127550044265769833862414983365876661076483822655155324979117350").unwrap(),
@@ -337,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn test_point_mul() {
+    fn point_mul() {
         assert_eq!(
             G.clone() * &BigInt::from(100),
             Point {
@@ -382,17 +340,18 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_point_decompress() {
-        assert_eq!(
-            point_compress(&G).1,
-            [
-                0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-                0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-                0x66, 0x66, 0x66, 0x66,
-            ],
-        );
-    }
+    // #[test]
+    // fn test_point_decompress() {
+    //     todo!()
+    //     // assert_eq!(
+    //     //     point_compress(&G).1,
+    //     //     [
+    //     //         0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+    //     //         0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+    //     //         0x66, 0x66, 0x66, 0x66,
+    //     //     ],
+    //     // );
+    // }
 
     #[test]
     fn test_secret_to_public() {
@@ -401,21 +360,11 @@ mod tests {
 
     #[test]
     fn test_sign() {
-        println!("{}", sign(&SECRET, MESSAGE).iter().map(|e| format!("{:02x}", e)).collect::<Vec<_>>().join(""));
-        assert_eq!(
-            sign(&SECRET, MESSAGE),
-            [
-                0x98, 0x3c, 0x71, 0x7a, 0x1a, 0x92, 0xc7, 0x80, 0x04, 0x71, 0x7b, 0x80, 0x3a, 0xe4,
-                0xa0, 0xde, 0xe7, 0x1a, 0xe2, 0x60, 0x7a, 0xfe, 0xc4, 0xa8, 0xbd, 0x76, 0xee, 0x7a,
-                0x8f, 0xa8, 0x3d, 0x54, 0xf6, 0xac, 0xc1, 0x48, 0x84, 0xa4, 0xb2, 0xba, 0xea, 0x60,
-                0xf8, 0x61, 0x00, 0x15, 0xef, 0x71, 0x17, 0xe2, 0xdf, 0x17, 0x53, 0xb5, 0xf4, 0xe6,
-                0x03, 0xb5, 0x57, 0xef, 0x8b, 0xc2, 0xd8, 0x08, 
-            ],
-        )
+        assert_eq!(sign(&SECRET, MESSAGE), SIGNATURE);
     }
 
     #[test]
     fn test_verify() {
-        assert!(verify(&PUBLIC, &MESSAGE, &sign(&SECRET, MESSAGE)))
+        assert!(verify(&PUBLIC, &MESSAGE, &sign(&SECRET, MESSAGE)));
     }
 }

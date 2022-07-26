@@ -7,11 +7,18 @@ pub fn str_diff(a: &str, b: &str) -> f32 {
     cos_sim(&ngram(&a.to_lowercase(), &b.to_lowercase(), 2))
 }
 
+/// Returns the case-insensitive n-gram cosine similarity between two strings.
+/// A `1` means the strings are identical, while a `0` means they are completely
+/// different.
+pub fn str_diff_n(a: &str, b: &str, n: u32) -> f32 {
+    cos_sim(&ngram(&a.to_lowercase(), &b.to_lowercase(), n))
+}
+
 // Returns the term frequency of `n` consecutive characters between two strings.
 // The order of the terms is not guarenteed, but will always be consistent
 // between the two returned vectors (order could be guarenteed with a BTreeSet,
 // but that is slower).
-fn ngram(s1: &str, s2: &str, n: u32) -> (Vec<u32>, Vec<u32>) {
+pub fn ngram(s1: &str, s2: &str, n: u32) -> (Vec<u32>, Vec<u32>) {
     let n = n as usize;
 
     let mut grams = HashSet::<&str>::new();

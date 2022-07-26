@@ -1,0 +1,13 @@
+[package]
+name = "algorithms"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+argparser = { version = "*", path = "argparser" }
+bigint = { version = "*", path = "bigint" }
+cosine_diff = { version = "*", path = "cosine_diff" }
+ed25519 = { version = "*", path = "ed25519" }
+encoding = { version = "*", path = "encoding" }
+obfuscate = { version = "*", path = "obfuscate" }
+sha = { version = "*", path = "sha" }
