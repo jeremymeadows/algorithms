@@ -13,7 +13,7 @@ fn main() {
     io::stdin().read_line(&mut input).unwrap();
 
     let secret = Sha256::hash(input.trim().as_bytes());
-    let public = ed25519::secret_to_public(&secret).1;
+    let public = ed25519::secret_to_public(&secret);
 
     print!("enter message: ");
     io::stdout().flush().unwrap();
@@ -23,11 +23,16 @@ fn main() {
     let message = input.trim().as_bytes();
     let sig = ed25519::sign(&secret, &message);
 
-    println!("");
-    println!("secret key: {}", encoding::b16_encode(&*secret));
-    println!("public key: {}", encoding::b16_encode(&public));
+    println!(
+        "
+secret key: {}
+public key: {}
 
-    println!("");
-    println!("signature: {}", encoding::b16_encode(&sig));
-    println!("verified: {}", ed25519::verify(&public, &message, &sig))
+signature: {}
+verified: {}",
+        encoding::b16_encode(&*secret),
+        encoding::b16_encode(&public),
+        encoding::b64_encode(&sig),
+        ed25519::verify(&public, &message, &sig)
+    )
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import base64
 import hashlib
 import sys
 
@@ -19,12 +20,7 @@ d = -121665 * modp_inv(121666) % p
 q = 2**252 + 27742317777372353535851937790883648493
 
 def sha512_modq(s):
-    return int.from_bytes(sha512(s), "little") % q
-
-# Base point
-g_y = 4 * modp_inv(5) % p
-g_x = recover_x(g_y, 0)
-G = (g_x, g_y, 1, g_x * g_y % p)
+    return int.from_bytes(sha512(s), 'little') % q
 
 ## Then follows functions to perform point operations.
 
@@ -81,13 +77,13 @@ def point_compress(P):
     zinv = modp_inv(P[2])
     x = P[0] * zinv % p
     y = P[1] * zinv % p
-    return int.to_bytes(y | ((x & 1) << 255), 32, "little")
+    return int.to_bytes(y | ((x & 1) << 255), 32, 'little')
 
 def point_decompress(s):
     if len(s) != 32:
-        raise Exception("Invalid input length for decompression")
+        raise Exception('Invalid input length for decompression')
 
-    y = int.from_bytes(s, "little")
+    y = int.from_bytes(s, 'little')
     sign = y >> 255
     y &= (1 << 255) - 1
 
@@ -97,14 +93,19 @@ def point_decompress(s):
     else:
         return (x, y, 1, x*y % p)
 
+# Base point
+g_y = 4 * modp_inv(5) % p
+g_x = recover_x(g_y, 0)
+G = (g_x, g_y, 1, g_x * g_y % p)
+
 ## These are functions for manipulating the private key.
 
 def secret_expand(secret):
     if len(secret) != 32:
-        raise Exception("Bad size of private key")
+        raise Exception('Bad size of private key')
 
     h = sha512(secret)
-    a = int.from_bytes(h[:32], "little")
+    a = int.from_bytes(h[:32], 'little')
     a &= (1 << 254) - 8
     a |= (1 << 254)
 
@@ -125,15 +126,15 @@ def sign(secret, msg):
     h = sha512_modq(Rs + A + msg)
     s = (r + (h * a)) % q
 
-    return Rs + int.to_bytes(s, 32, "little")
+    return Rs + int.to_bytes(s, 32, 'little')
 
 ## And finally the verification function.
 
 def verify(public, msg, signature):
     if len(public) != 32:
-        raise Exception("Bad public key length")
+        raise Exception('Bad public key length')
     if len(signature) != 64:
-        Exception("Bad signature length")
+        Exception('Bad signature length')
 
     A = point_decompress(public)
     if not A:
@@ -144,7 +145,7 @@ def verify(public, msg, signature):
     if not R:
         return False
 
-    s = int.from_bytes(signature[32:], "little")
+    s = int.from_bytes(signature[32:], 'little')
     if s >= q: return False
 
     h = sha512_modq(Rs + public + msg)
@@ -159,14 +160,20 @@ def to_hex(s):
 
 if __name__ == '__main__':
     secret = hashlib.sha256(input('enter password: ').encode('utf8')).digest()
-    # secret = hashlib.sha256(b'foo').digest()
     public = secret_to_public(secret)
 
     msg = input('enter message: ').encode('utf8')
-    # msg = b'Hello, world!'
     sig = sign(secret, msg)
 
-    print(to_hex(secret))
-    print(to_hex(msg))
-    print(to_hex(sig))
-    print(verify(public, msg, sig))
+    print(
+        '''
+secret key: {}
+public key: {}
+
+signature: {}
+verified: {}'''.format(
+        to_hex(secret),
+        to_hex(public),
+        base64.b64encode(sig),
+        verify(public, msg, sig)
+    ))
