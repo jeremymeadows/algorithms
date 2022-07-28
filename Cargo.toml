@@ -9,5 +9,7 @@ bigint = { version = "*", path = "bigint" }
 cosine_diff = { version = "*", path = "cosine_diff" }
 ed25519 = { version = "*", path = "ed25519" }
 encoding = { version = "*", path = "encoding" }
+input = { version = "*", path = "input" }
 obfuscate = { version = "*", path = "obfuscate" }
+random = { version = "*", path = "random" }
 sha = { version = "*", path = "sha" }
