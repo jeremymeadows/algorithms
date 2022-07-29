@@ -10,6 +10,7 @@ cosine_diff = { version = "*", path = "cosine_diff" }
 ed25519 = { version = "*", path = "ed25519" }
 encoding = { version = "*", path = "encoding" }
 input = { version = "*", path = "input" }
+mersenne_twister = { version = "*", path = "mersenne_twister" }
 obfuscate = { version = "*", path = "obfuscate" }
 random = { version = "*", path = "random" }
 sha = { version = "*", path = "sha" }

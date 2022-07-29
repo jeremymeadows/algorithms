@@ -1,6 +1,6 @@
 //!
 
-use crate::{Rng, RngOutput, u32_to_f32, u64_to_f64};
+use crate::{Rng, RngOutput};
 
 use libc::{self, c_void};
 use std::convert::Infallible;
@@ -21,7 +21,7 @@ impl Rng for OsRng {
     }
 }
 
-macro_rules! impl_int_cpu_rng_output {
+macro_rules! impl_int_os_rng_output {
     ($($t:ty),*) => {
         $(
             impl RngOutput<OsRng> for $t {
@@ -40,17 +40,17 @@ macro_rules! impl_int_cpu_rng_output {
     };
 }
 
-impl_int_cpu_rng_output!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_int_os_rng_output!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 impl RngOutput<OsRng> for f32 {
     fn gen(g: &mut OsRng) -> Self {
-        u32_to_f32(g.get::<u32>())
+        crate::u32_to_f32(g.get::<u32>())
     }
 }
 
 impl RngOutput<OsRng> for f64 {
     fn gen(g: &mut OsRng) -> Self {
-        u64_to_f64(g.get::<u64>())
+        crate::u64_to_f64(g.get::<u64>())
     }
 }
 

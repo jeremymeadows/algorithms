@@ -1,8 +1,9 @@
 //!
 
-use crate::{Rng, RngOutput, u32_to_f32, u64_to_f64};
+use crate::{Rng, RngOutput};
 
 use std::arch::asm;
+use std::cmp;
 use std::convert::Infallible;
 
 pub struct CpuRng {}
@@ -26,25 +27,26 @@ macro_rules! impl_int_cpu_rng_output {
         $(
             impl RngOutput<CpuRng> for $t {
                 fn gen(_: &mut CpuRng) -> Self {
-                    let x: usize;
+                    const LEN: usize = <$t>::BITS as usize / 8;
+                    const PTR_LEN: usize = usize::BITS as usize / 8;
 
-                    unsafe { asm! {
-                        "RDRAND {}",
-                        out(reg) x,
-                    }}
+                    let len = cmp::min(LEN, PTR_LEN);
+                    let mut bytes = [0; LEN];
 
-                    if Self::BITS > 64 {
-                        let y: u64;
+                    // grab pointer-sized chunks of random data until enough has been gathered to
+                    // create the output type. this has the flexibility to work on processors with
+                    // different sized registers
+                    for i in 0..cmp::max(1, LEN / PTR_LEN) {
+                        let x: usize;
 
                         unsafe { asm! {
                             "RDRAND {}",
-                            out(reg) y,
+                            out(reg) x,
                         }}
 
-                        ((x as u128) << 64 | (y as u128)) as Self
-                    } else {
-                        x as Self
+                        bytes[(i * len)..][..len].copy_from_slice(&x.to_ne_bytes()[..len]);
                     }
+                    Self::from_ne_bytes(bytes)
                 }
             }
         )*
@@ -55,13 +57,13 @@ impl_int_cpu_rng_output!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 impl RngOutput<CpuRng> for f32 {
     fn gen(g: &mut CpuRng) -> Self {
-        u32_to_f32(g.get::<u32>())
+        crate::u32_to_f32(g.get::<u32>())
     }
 }
 
 impl RngOutput<CpuRng> for f64 {
     fn gen(g: &mut CpuRng) -> Self {
-        u64_to_f64(g.get::<u64>())
+        crate::u64_to_f64(g.get::<u64>())
     }
 }
 
