@@ -18,21 +18,10 @@ pub struct MersenneTwister {
 }
 
 impl Default for MersenneTwister {
-    /// Creates a new generator seeded with its memory address. Useful to get a
-    /// non-deterministic seed value.
+    /// Creates a new generator seeded with a memory address. Useful to get a
+    /// semi-non-deterministic seed value.
     fn default() -> Self {
-        let mut gen = Self::new();
-        gen.seed(&gen as *const Self as u64);
-        gen
-    }
-}
-
-impl From<u64> for MersenneTwister {
-    /// Creates a new generator with a seed value.
-    fn from(seed: u64) -> Self {
-        let mut gen = Self::new();
-        gen.seed(seed);
-        gen
+        Self::from(&() as *const () as u64)
     }
 }
 
@@ -45,6 +34,13 @@ impl MersenneTwister {
         };
 
         gen.seed(5489);
+        gen
+    }
+    
+    /// Creates a new generator with a seed value.
+    pub fn from(seed: u64) -> Self {
+        let mut gen = Self::new();
+        gen.seed(seed);
         gen
     }
 
@@ -105,7 +101,7 @@ impl Rng for MersenneTwister {
 }
 
 macro_rules! impl_int_mt_output {
-    ($($t:ty),*) => {
+    ($($t:ty),+) => {
         $(
             impl RngOutput<MersenneTwister> for $t {
                 fn gen(g: &mut MersenneTwister) -> Self {
@@ -116,7 +112,7 @@ macro_rules! impl_int_mt_output {
                     x
                 }
             }
-        )*
+        )+
     };
 }
 
@@ -214,6 +210,30 @@ mod tests {
 
         for i in 0..10 {
             assert!(gen.get::<f64>() - exp[i] < err);
+        }
+    }
+
+    #[test]
+    fn chi_sqrd() {
+        let mut rng = MersenneTwister::default();
+        let n = 100000;
+        let mut buckets = [vec![0; 10], vec![0; 100]];
+
+        for _ in 0..n {
+            let r = rng.get::<u32>();
+
+            for b in buckets.iter_mut() {
+                let l = b.len() as u32;
+                b[(r % l) as usize] += 1;
+            }
+        }
+
+        for b in buckets.iter() {
+            let d = (n / b.len()) as f32;
+
+            for i in b.iter() {
+                assert!(*i as f32 > d * 0.9 && (*i as f32) < d * 1.1);
+            }
         }
     }
 }

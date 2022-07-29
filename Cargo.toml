@@ -7,6 +7,7 @@ edition = "2021"
 argparser = { version = "*", path = "argparser" }
 bigint = { version = "*", path = "bigint" }
 cosine_diff = { version = "*", path = "cosine_diff" }
+chacha = { version = "*", path = "chacha" }
 ed25519 = { version = "*", path = "ed25519" }
 encoding = { version = "*", path = "encoding" }
 input = { version = "*", path = "input" }

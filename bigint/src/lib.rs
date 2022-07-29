@@ -4,7 +4,14 @@ pub mod arithmetic;
 pub mod cmp;
 pub mod logical;
 
+#[cfg(test)]
 type Base = u8;
+#[cfg(test)]
+type BaseExt = u16;
+
+#[cfg(not(test))]
+type Base = u8;
+#[cfg(not(test))]
 type BaseExt = u16;
 
 #[derive(Clone, Debug)]

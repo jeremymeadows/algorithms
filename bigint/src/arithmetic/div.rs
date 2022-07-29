@@ -5,7 +5,7 @@ use crate::{BigInt};
 impl Div for BigInt {
     type Output = Self;
 
-    fn div(self, other: Self) -> Self {
+    fn div(self, _other: Self) -> Self {
         self
     }
 }

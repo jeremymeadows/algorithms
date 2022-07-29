@@ -58,7 +58,7 @@ impl Add for BigInt {
     }
 }
 
-impl AddAssign for BigInt {
+impl AddAssign<Self> for BigInt {
     fn add_assign(&mut self, other: Self) {
         *self = self.clone() + other;
     }
@@ -84,8 +84,7 @@ macro_rules! impl_add {
     }
 }
 
-impl_add!(u8, u16, u32, u64, u128);
-impl_add!(i8, i16, i32, i64, i128);
+impl_add!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {

@@ -23,7 +23,7 @@ impl Rng for CpuRng {
 }
 
 macro_rules! impl_int_cpu_rng_output {
-    ($($t:ty),*) => {
+    ($($t:ty),+) => {
         $(
             impl RngOutput<CpuRng> for $t {
                 fn gen(_: &mut CpuRng) -> Self {
@@ -49,7 +49,7 @@ macro_rules! impl_int_cpu_rng_output {
                     Self::from_ne_bytes(bytes)
                 }
             }
-        )*
+        )+
     };
 }
 

@@ -22,7 +22,7 @@ impl Rng for OsRng {
 }
 
 macro_rules! impl_int_os_rng_output {
-    ($($t:ty),*) => {
+    ($($t:ty),+) => {
         $(
             impl RngOutput<OsRng> for $t {
                 fn gen(_: &mut OsRng) -> Self {
@@ -32,11 +32,10 @@ macro_rules! impl_int_os_rng_output {
                     unsafe {
                         libc::getentropy(&mut buf as *mut [u8; LEN] as *mut c_void, LEN);
                     }
-
                     Self::from_ne_bytes(buf)
                 }
             }
-        )*
+        )+
     };
 }
 
