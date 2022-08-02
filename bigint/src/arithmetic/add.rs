@@ -1,70 +1,88 @@
-use std::cmp::{self, Ordering};
+use std::mem;
 use std::ops::{Add, AddAssign};
 
-use crate::{Base, BaseExt, BigInt};
+use crate::BigInt;
 
-impl Add for BigInt {
+impl Add<Self> for BigInt {
     type Output = Self;
 
-    fn add(mut self, mut other: Self) -> Self {
-        let mut carry: Base = 0;
-        let size = cmp::max(self.data.len(), other.data.len());
-        let mut greater_neg = false;
-
-        self.data.resize(size, 0);
-        other.data.resize(size, 0);
-
-        if self.signed ^ other.signed {
-            if self.signed {
-                std::mem::swap(&mut self, &mut other);
-            }
-
-            match self.clone().abs().cmp(&other.clone().abs()) {
-                Ordering::Equal => {
-                    return Self {
-                        signed: false,
-                        data: vec![0],
-                    };
-                }
-                Ordering::Less => {
-                    println!("grater_neg");
-                    greater_neg = true;
-                }
-                Ordering::Greater => {}
-            }
-
-            other = !other;
-        }
-
-        for i in 0..size {
-            let sum = self.data[i] as BaseExt + other.data[i] as BaseExt + carry as BaseExt;
-            self.data[i] = (sum % (Base::MAX as BaseExt + 1)) as Base;
-            carry = (sum / (Base::MAX as BaseExt + 1)) as Base;
-        }
-
-        if self.signed ^ other.signed && carry > 0 {
-            self = self + BigInt::from(1u8);
-        } else if carry > 0 {
-            self.data.push(carry);
-        }
-
-        if greater_neg {
-            self.signed = true;
-            println!("grater_neg");
-            // self = !self;
-        }
-
+    fn add(mut self, other: Self) -> Self::Output {
+        self += other;
         self
     }
 }
 
 impl AddAssign<Self> for BigInt {
-    fn add_assign(&mut self, other: Self) {
-        *self = self.clone() + other;
+    fn add_assign(&mut self, mut other: Self) {
+        if self.signed ^ other.signed {
+            if self.signed {
+                mem::swap(self, &mut other);
+            }
+            other.signed = false;
+
+            *self -= other;
+        } else {
+            if *self < other {
+                mem::swap(self, &mut other);
+            }
+
+            let mut sum;
+            let mut carry = false;
+
+            let mut i = 0;
+            while i < other.data.len() {
+                (sum, carry) = self.data[i].carrying_add(other.data[i], carry);
+                self.data[i] = sum;
+
+                i += 1;
+            }
+
+            while i < self.data.len() {
+                (sum, carry) = self.data[i].carrying_add(0, carry);
+                self.data[i] = sum;
+
+                i += 1;
+            }
+
+            if carry {
+                self.data.push(1);
+            }
+        }
     }
 }
 
-macro_rules! impl_add {
+impl Add<&Self> for BigInt {
+    type Output = Self;
+
+    fn add(mut self, other: &Self) -> Self::Output {
+        self += other;
+        self
+    }
+}
+
+impl AddAssign<&Self> for BigInt {
+    fn add_assign(&mut self, other: &Self) {
+        *self += other.clone();
+    }
+}
+
+impl Add<BigInt> for &BigInt {
+    type Output = BigInt;
+
+    fn add(self, other: BigInt) -> Self::Output {
+        self.clone() + other
+    }
+}
+
+impl Add<Self> for &BigInt {
+    type Output = BigInt;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.clone() + other.clone()
+    }
+}
+
+macro_rules! impl_primitave_add {
     ($($t:ty),*) => {
         $(
             impl Add<$t> for BigInt {
@@ -84,7 +102,7 @@ macro_rules! impl_add {
     }
 }
 
-impl_add!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_primitave_add!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {

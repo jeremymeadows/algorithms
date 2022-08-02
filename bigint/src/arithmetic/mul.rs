@@ -1,46 +1,96 @@
-use std::ops::Mul;
+use std::mem;
+use std::ops::{Mul, MulAssign};
 
-use crate::{Base, BaseExt, BigInt};
+use crate::{Base, BigInt};
 
 impl Mul for BigInt {
     type Output = Self;
 
-    fn mul(mut self, mut other: Self) -> Self {
-        if self.data.len() < other.data.len() {
-            std::mem::swap(&mut self, &mut other);
-        }
-
-        if other == 0.into() {
-            return BigInt::from(0);
-        }
-
-        let mut chunks = vec![0 as Base; self.data.len() + other.data.len()];
-        let mut carry: Base = 0;
-
-        for i in 0..(self.data.len()) {
-            for j in 0..(other.data.len()) {
-                let prod = self.data[i] as BaseExt * other.data[j] as BaseExt + carry as BaseExt;
-                chunks[i] += (prod % (Base::MAX as BaseExt + 1)) as Base;
-                carry = (prod / (Base::MAX as BaseExt + 1)) as Base;
-            }
-        }
-
-        while chunks.ends_with(&[0]) && chunks.len() > 1 {
-            chunks.pop();
-        }
-
-        if carry > 0 {
-            chunks.push(carry);
-        }
-
-        self.data = chunks;
-        self.signed = self.signed ^ other.signed;
-
+    fn mul(mut self, other: Self) -> Self {
+        self *= other;
         self
     }
 }
 
-macro_rules! impl_mul {
+impl MulAssign<Self> for BigInt {
+    fn mul_assign(&mut self, mut other: Self) {
+        if self.data.len() < other.data.len() {
+            mem::swap(self, &mut other);
+        }
+
+        if *self == 0 || other == 0 {
+            *self = BigInt::from(0);
+        } else if *self == 1 {
+            *self = other;
+        } else if other != 1 {
+            let mut chunks = vec![0 as Base; self.data.len() + other.data.len()];
+            let (mut prod, mut overflow);
+            let mut carry = 0;
+
+            for i in 0..(self.data.len()) {
+                for j in 0..(other.data.len()) {
+                    (prod, carry) = self.data[i].carrying_mul(other.data[j], carry);
+                    (chunks[i], overflow) = chunks[i].carrying_add(prod, false);
+
+                    let mut k = i + 1;
+                    while overflow {
+                        if k < chunks.len() {
+                            (chunks[k], overflow) = chunks[k].carrying_add(0, overflow);
+                        } else {
+                            chunks.push(1);
+                            overflow = false
+                        }
+                        k += 1;
+                    }
+                }
+            }
+
+            while chunks.ends_with(&[0]) && chunks.len() > 1 {
+                chunks.pop();
+            }
+
+            if carry > 0 {
+                chunks.push(carry);
+            }
+
+            self.data = chunks;
+            self.signed = self.signed ^ other.signed;
+        }
+    }
+}
+
+impl Mul<&Self> for BigInt {
+    type Output = Self;
+
+    fn mul(mut self, other: &Self) -> Self::Output {
+        self *= other;
+        self
+    }
+}
+
+impl MulAssign<&Self> for BigInt {
+    fn mul_assign(&mut self, other: &Self) {
+        *self *= other.clone();
+    }
+}
+
+impl Mul<BigInt> for &BigInt {
+    type Output = BigInt;
+
+    fn mul(self, other: BigInt) -> Self::Output {
+        self.clone() * other
+    }
+}
+
+impl Mul<Self> for &BigInt {
+    type Output = BigInt;
+
+    fn mul(self, other: Self) -> Self::Output {
+        self.clone() * other.clone()
+    }
+}
+
+macro_rules! impl_primitive_mul {
     ($($t:ty),*) => {
         $(
             impl Mul<$t> for BigInt {
@@ -50,12 +100,17 @@ macro_rules! impl_mul {
                     self * BigInt::from(other)
                 }
             }
+
+            impl MulAssign<$t> for BigInt {
+                fn mul_assign(&mut self, other: $t) {
+                    *self = self.clone() * other;
+                }
+            }
         )*
     }
 }
 
-impl_mul!(u8, u16, u32, u64, u128);
-impl_mul!(i8, i16, i32, i64, i128);
+impl_primitive_mul!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {

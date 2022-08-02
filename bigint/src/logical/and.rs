@@ -1,3 +1,4 @@
+use std::mem;
 use std::ops::BitAnd;
 
 use crate::BigInt;
@@ -7,7 +8,7 @@ impl BitAnd for BigInt {
 
     fn bitand(mut self, mut other: Self) -> Self::Output {
         if self.data.len() > other.data.len() {
-            std::mem::swap(&mut self, &mut other);
+            mem::swap(&mut self, &mut other);
         }
 
         for i in 0..self.data.len() {
@@ -32,7 +33,7 @@ mod tests {
 
         assert_eq!(a & b, c);
     }
-    
+
     #[test]
     fn and_257_1() {
         let a = BigInt::from(257);

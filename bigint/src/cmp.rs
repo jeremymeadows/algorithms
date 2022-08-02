@@ -4,61 +4,37 @@ use crate::BigInt;
 
 impl PartialEq for BigInt {
     fn eq(&self, other: &Self) -> bool {
-        self.signed == other.signed && self.data == other.data || self.data == [0] && other.data == [0]
+        self.data == [0] && other.data == [0]
+            || self.signed == other.signed && self.data == other.data
     }
 }
 
-impl Eq for BigInt {}
-
 impl Ord for BigInt {
     fn cmp(&self, other: &Self) -> Ordering {
-        let ord: Ordering;
-        let sign = self.signed.cmp(&other.signed);
-
         if self == other {
-            ord = Ordering::Equal;
+            Ordering::Equal
+        } else if self.signed ^ other.signed {
+            self.signed.cmp(&other.signed).reverse()
         } else {
-            match sign {
-                Ordering::Less => {
-                    ord = Ordering::Greater;
-                }
-                Ordering::Greater => {
-                    ord = Ordering::Less;
-                }
-                Ordering::Equal => {
-                    match self.signed {
-                        false => {
-                            match self.data.len().cmp(&other.data.len()) {
-                                Ordering::Equal => {
-                                    ord = self.data.cmp(&other.data);
-                                }
-                                Ordering::Less => {
-                                    ord = Ordering::Less;
-                                }
-                                Ordering::Greater => {
-                                    ord = Ordering::Greater;
-                                }
-                            }
-                        }
-                        true => {
-                            match self.data.len().cmp(&other.data.len()) {
-                                Ordering::Equal => {
-                                    ord = self.data.cmp(&other.data).reverse();
-                                }
-                                Ordering::Less => {
-                                    ord = Ordering::Greater;
-                                }
-                                Ordering::Greater => {
-                                    ord = Ordering::Less;
-                                }
-                            }
-                        }
+            let a = &self.data;
+            let b = &other.data;
+
+            let ord = a.len().cmp(&b.len()).then_with(|| {
+                for i in (0..(a.len())).rev() {
+                    let ord = a[i].cmp(&b[i]);
+                    if ord.is_ne() {
+                        return ord;
                     }
                 }
+                unreachable!()
+            });
+
+            if !self.signed {
+                ord
+            } else {
+                ord.reverse()
             }
         }
-
-        ord
     }
 }
 
@@ -68,111 +44,103 @@ impl PartialOrd for BigInt {
     }
 }
 
+macro_rules! impl_primitive_cmp {
+    ($($t:ty),*) => {
+        $(
+            impl PartialEq<$t> for BigInt {
+                fn eq(&self, other: &$t) -> bool {
+                    *self == BigInt::from(*other)
+                }
+            }
+
+            impl PartialOrd<$t> for BigInt {
+                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                    Some(self.cmp(&BigInt::from(*other)))
+                }
+            }
+        )*
+    }
+}
+
+impl_primitive_cmp!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Base, BaseExt};
+    use crate::Base;
 
-    #[test]
-    fn eq() {
-        let a = BigInt::from(42);
-        let b = BigInt::from(42);
+    mod eq {
+        use super::*;
 
-        assert_eq!(a, b);
+        macro_rules! test_eq {
+            ($name:ident: $a:expr, $b:expr) => {
+                #[test]
+                fn $name() {
+                    assert_eq!($a, $b);
+                    assert_eq!($a.cmp(&$b), Ordering::Equal);
+                }
+            };
+        }
+
+        macro_rules! test_ne {
+            ($name:ident: $a:expr, $b:expr) => {
+                #[test]
+                fn $name() {
+                    assert_ne!($a, $b);
+                    assert_ne!($a.cmp(&$b), Ordering::Equal);
+                }
+            };
+        }
+
+
+        test_eq!(eq: BigInt::from(42), BigInt::from(42));
+
+        test_eq!(eq_neg: BigInt::from(-42), BigInt::from(-42));
+
+        test_ne!(pos_ne_neg: BigInt::from(42), BigInt::from(-42));
+
+        test_ne!(ne: BigInt::from(42), BigInt::from(64));
+
+        test_eq!(zeroes: BigInt::from(0), BigInt::from(0));
+
+        test_eq!(zero_eq_negative_zero: BigInt::from(0), BigInt { signed: true, data: vec![0] });
+
+        test_eq!(big_eq: BigInt::from(0xfedcba9876543210_u128), BigInt::from(0xfedcba9876543210_u128));
+
+        test_ne!(big_ne: BigInt::from(0xfedcba9876543210_u128), BigInt::from(-0xfedcba9876543210_i128));
     }
 
-    #[test]
-    fn eq_neg() {
-        let a = BigInt::from(-42);
-        let b = BigInt::from(-42);
+    mod ord {
+        use super::*;
 
-        assert_eq!(a, b);
-    }
+        macro_rules! test_ord {
+            ($name:ident: $a:expr, $b:expr) => {
+                #[test]
+                fn $name() {
+                    assert!($a < $b);
+                    assert!($b > $a);
+                    assert_eq!($a.cmp(&$b), Ordering::Less);
+                    assert_eq!($b.cmp(&$a), Ordering::Greater);
+                }
+            };
+        }
 
-    #[test]
-    fn ne() {
-        let a = BigInt::from(42);
-        let b = BigInt::from(64);
+        test_ord!(ord: BigInt::from(1), BigInt::from(2));
 
-        assert_ne!(a, b);
-    }
+        test_ord!(ord_neg: BigInt::from(-2), BigInt::from(-1));
 
-    #[test]
-    fn ne_sign() {
-        let a = BigInt::from(42);
-        let b = BigInt::from(-42);
+        test_ord!(neg_lt_pos: BigInt::from(-2), BigInt::from(1));
 
-        assert_ne!(a, b);
-    }
+        test_ord!(diff_data_size:
+            BigInt { signed: false, data: vec![Base::MAX] },
+            BigInt { signed: false, data: vec![1, Base::MAX] }
+        );
 
-    #[test]
-    fn eq_0_neg0() {
-        let a = BigInt::from(0);
-        let mut b = a.clone();
-        b.signed = true;
+        test_ord!(diff_data_size_neg:
+            BigInt { signed: true, data: vec![1, Base::MAX] },
+            BigInt { signed: true, data: vec![Base::MAX] }
+        );
 
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn eq_long() {
-        let a = BigInt::from(BaseExt::MAX);
-        let b = BigInt::from(BaseExt::MAX);
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn ord() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(8);
-
-        assert!(a < b);
-        assert!(b > a);
-    }
-
-    #[test]
-    fn ord_neg() {
-        let a = BigInt::from(-8);
-        let b = BigInt::from(-1);
-
-        assert!(a < b);
-        assert!(b > a);
-    }
-
-    #[test]
-    fn ord_pos_neg() {
-        let a = BigInt::from(-8);
-        let b = BigInt::from(1);
-
-        assert!(a < b);
-        assert!(b > a);
-    }
-
-    #[test]
-    fn ord_size() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(Base::MAX as BaseExt + 1);
-
-        assert!(a < b);
-        assert!(b > a);
-    }
-
-    #[test]
-    fn ord_long() {
-        let a = BigInt::from(Base::MAX as BaseExt + 1);
-        let b = BigInt::from(Base::MAX as BaseExt + 2);
-
-        assert!(a < b);
-        assert!(b > a);
-    }
-
-    #[test]
-    fn ord_neg_long() {
-        let a = BigInt::from(Base::MIN as BaseExt + 2) * -1;
-        let b = BigInt::from(Base::MIN as BaseExt + 1) * -1;
-
-        assert!(a < b);
-        assert!(b > a);
+        test_ord!(big_ord: BigInt::from(0x1234567890abcdef_u128), BigInt::from(0xfedcba9876543210_u128));
     }
 }

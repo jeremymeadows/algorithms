@@ -1,3 +1,4 @@
+use std::mem;
 use std::ops::BitXor;
 
 use crate::BigInt;
@@ -7,7 +8,7 @@ impl BitXor for BigInt {
 
     fn bitxor(mut self, mut other: Self) -> Self::Output {
         if self.data.len() > other.data.len() {
-            std::mem::swap(&mut self, &mut other);
+            mem::swap(&mut self, &mut other);
         }
 
         for i in 0..self.data.len() {
@@ -23,7 +24,6 @@ impl BitXor for BigInt {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Base;
 
     #[test]
     fn xor_0_1() {

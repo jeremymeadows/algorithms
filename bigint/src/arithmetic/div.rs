@@ -1,16 +1,64 @@
-use std::ops::Div;
+use std::ops::{Div, DivAssign};
 
-use crate::{BigInt};
+use crate::BigInt;
 
 impl Div for BigInt {
     type Output = Self;
 
-    fn div(self, _other: Self) -> Self {
+    fn div(mut self, other: Self) -> Self {
+        self /= other;
         self
     }
 }
 
-macro_rules! impl_div {
+impl DivAssign<Self> for BigInt {
+    fn div_assign(&mut self, other: Self) {
+        assert!(other != 0, "attempt to divide by 0");
+
+        if *self == 0 || *self == 1 && other.abs() > 1 {
+            self.data = vec![0];
+        } else if self.abs() == other.abs() {
+            self.data = vec![1];
+        } else if other.abs() != 1 {
+            todo!();
+        }
+
+        self.signed = self.signed ^ other.signed;
+    }
+}
+
+impl Div<&Self> for BigInt {
+    type Output = Self;
+
+    fn div(mut self, other: &Self) -> Self::Output {
+        self /= other;
+        self
+    }
+}
+
+impl DivAssign<&Self> for BigInt {
+    fn div_assign(&mut self, other: &Self) {
+        *self /= other.clone();
+    }
+}
+
+impl Div<BigInt> for &BigInt {
+    type Output = BigInt;
+
+    fn div(self, other: BigInt) -> Self::Output {
+        self.clone() / other
+    }
+}
+
+impl Div<Self> for &BigInt {
+    type Output = BigInt;
+
+    fn div(self, other: Self) -> Self::Output {
+        self.clone() / other.clone()
+    }
+}
+
+macro_rules! impl_primitive_div {
     ($($t:ty),*) => {
         $(
             impl Div<$t> for BigInt {
@@ -20,12 +68,17 @@ macro_rules! impl_div {
                     self / BigInt::from(other)
                 }
             }
+
+            impl DivAssign<$t> for BigInt {
+                fn div_assign(&mut self, other: $t) {
+                    *self = self.clone() / other;
+                }
+            }
         )*
     }
 }
 
-impl_div!(u8, u16, u32, u64, u128);
-impl_div!(i8, i16, i32, i64, i128);
+impl_primitive_div!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {

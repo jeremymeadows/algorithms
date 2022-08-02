@@ -10,7 +10,7 @@ pub fn str_diff(a: &str, b: &str) -> f32 {
 /// Returns the case-insensitive n-gram cosine similarity between two strings.
 /// A `1` means the strings are identical, while a `0` means they are completely
 /// different.
-pub fn str_diff_n(a: &str, b: &str, n: u32) -> f32 {
+pub fn str_diff_n(a: &str, b: &str, n: usize) -> f32 {
     cos_sim(&ngram(&a.to_lowercase(), &b.to_lowercase(), n))
 }
 
@@ -18,9 +18,7 @@ pub fn str_diff_n(a: &str, b: &str, n: u32) -> f32 {
 // The order of the terms is not guarenteed, but will always be consistent
 // between the two returned vectors (order could be guarenteed with a BTreeSet,
 // but that is slower).
-pub fn ngram(s1: &str, s2: &str, n: u32) -> (Vec<u32>, Vec<u32>) {
-    let n = n as usize;
-
+fn ngram(s1: &str, s2: &str, n: usize) -> (Vec<u32>, Vec<u32>) {
     let mut grams = HashSet::<&str>::new();
     for i in 0..((s1.len() + 1).saturating_sub(n)) {
         grams.insert(&s1[i..(i + n)]);
@@ -42,7 +40,7 @@ pub fn ngram(s1: &str, s2: &str, n: u32) -> (Vec<u32>, Vec<u32>) {
 // the slices are not of equal length.
 fn dot_prod(a: &[u32], b: &[u32]) -> Result<u32, &'static str> {
     if a.len() != b.len() {
-        return Err("Vectors must be of equal length");
+        return Err("Slices must be of equal length");
     }
 
     let mut v = Vec::new();

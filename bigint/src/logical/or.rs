@@ -1,3 +1,4 @@
+use std::mem;
 use std::ops::BitOr;
 
 use crate::BigInt;
@@ -7,7 +8,7 @@ impl BitOr for BigInt {
 
     fn bitor(mut self, mut other: Self) -> Self::Output {
         if self.data.len() < other.data.len() {
-            std::mem::swap(&mut self, &mut other);
+            mem::swap(&mut self, &mut other);
         }
 
         for i in 0..self.data.len() {

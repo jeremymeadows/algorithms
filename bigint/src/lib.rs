@@ -1,20 +1,22 @@
-use std::fmt::{self, Display, Formatter};
+#![feature(bigint_helper_methods)]
 
 pub mod arithmetic;
 pub mod cmp;
+pub mod convert;
+pub mod fmt;
 pub mod logical;
 
-#[cfg(test)]
-type Base = u8;
-#[cfg(test)]
-type BaseExt = u16;
+#[cfg(target_pointer_width = "64")]
+type Base = u64;
+#[cfg(all(test, target_pointer_width = "64"))]
+type BaseExt = u128;
 
-#[cfg(not(test))]
-type Base = u8;
-#[cfg(not(test))]
-type BaseExt = u16;
+#[cfg(not(target_pointer_width = "64"))]
+type Base = u32;
+#[cfg(all(test, not(target_pointer_width = "64")))]
+type BaseExt = u64;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct BigInt {
     signed: bool,
     data: Vec<Base>,
@@ -28,102 +30,40 @@ impl BigInt {
         }
     }
 
-    pub fn abs(mut self) -> Self {
-        self.signed = false;
-        self
+    pub fn is_positive(&self) -> bool {
+        *self > 0
+    }
+
+    pub fn is_negative(&self) -> bool {
+        *self < 0
     }
 }
 
-impl Display for BigInt {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut s = String::new();
-
-        for i in self.data.iter().rev() {
-            s += format!("{:02x}", i).as_str();
-        }
-        s = s.trim_start_matches("0").to_string();
-        s = format!("0x{}", s);
-
-        if self.signed {
-            s = format!("-{}", s);
-        }
-
-        write!(f, "{}", s)
+impl Default for BigInt {
+    fn default() -> Self {
+        Self::new()
     }
 }
-
-macro_rules! impl_from_uint {
-    ($($t:ty),*) => {
-        $(
-            impl From<$t> for BigInt {
-                fn from(num: $t) -> Self {
-                    let mut digits = num
-                        .to_be_bytes()
-                        .chunks((Base::BITS / 8).try_into().unwrap())
-                        .map(|e| Base::from_be_bytes(e.try_into().unwrap()))
-                        .rev()
-                        .collect::<Vec<Base>>();
-
-                    while digits.len() > 1 && digits[digits.len() - 1] == 0 {
-                        digits.pop();
-                    }
-
-                    Self {
-                        signed: false,
-                        data: digits,
-                    }
-                }
-            }
-        )*
-    }
-}
-
-macro_rules! impl_from_int {
-    ($($t:ty),*) => {
-        $(
-            impl From<$t> for BigInt {
-                fn from(num: $t) -> Self {
-                    let signed = num < 0;
-                    let mut digits = num
-                        .abs()
-                        .to_be_bytes()
-                        .chunks((Base::BITS / 8).try_into().unwrap())
-                        .map(|e| Base::from_be_bytes(e.try_into().unwrap()))
-                        .rev()
-                        .collect::<Vec<Base>>();
-
-                    while digits.len() > 1 && digits[digits.len() - 1] == 0 {
-                        digits.pop();
-                    }
-
-                    Self {
-                        signed: signed,
-                        data: digits,
-                    }
-                }
-            }
-        )*
-    }
-}
-
-impl_from_uint!(u8, u16, u32, u64, u128);
-impl_from_int!(i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        assert_eq!(BigInt::from(0_u8).data, vec![0]);
-        assert_eq!(BigInt::from(1_u8).data, vec![1]);
-        assert_eq!(BigInt::from(255_u8).data, vec![255]);
-        assert_eq!(BigInt::from(256_u16).data, vec![0, 1]);
-        assert_eq!(BigInt::from(65535_u16).data, vec![255, 255]);
-        assert_eq!(BigInt::from(65536_u32).data, vec![0, 0, 1]);
+    fn is_positive() {
+        assert!(BigInt::from(1).is_positive());
+        assert!(!BigInt::from(1).is_negative());
+    }
 
-        assert_eq!(BigInt::from(-123_i8).abs(), BigInt::from(123_u8));
-        assert_eq!(BigInt::from(-256_i16).abs(), BigInt::from(256_u16));
-        assert_eq!(BigInt::from(-65536_i32).abs(), BigInt::from(65536_u32));
+    #[test]
+    fn is_negative() {
+        assert!(BigInt::from(-1).is_negative());
+        assert!(!BigInt::from(-1).is_positive());
+    }
+
+    #[test]
+    fn is_zero() {
+        assert!(!BigInt::from(0).is_positive());
+        assert!(!BigInt::from(0).is_negative());
     }
 }
