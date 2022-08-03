@@ -27,21 +27,25 @@ impl SubAssign<Self> for BigInt {
                 self.signed = true;
             }
 
+            let mut overflow;
             let mut i = 0;
+
             while i < other.data.len() {
-                let (mut diff, mut overflow) = self.data[i].overflowing_sub(other.data[i]);
-                self.data[i] = diff;
+                (self.data[i], overflow) = self.data[i].overflowing_sub(other.data[i]);
 
                 let mut j = i + 1;
-                while overflow && j < other.data.len() {
-                    (diff, overflow) = self.data[j].overflowing_sub(1);
-                    self.data[j] = diff;
+                while overflow && j < self.data.len() {
+                    (self.data[j], overflow) = self.data[j].overflowing_sub(1);
 
                     j += 1;
                 }
 
                 i += 1;
             }
+        }
+
+        while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
+            self.data.pop();
         }
     }
 }
@@ -102,68 +106,56 @@ impl_primitive_sub!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Base, BaseExt};
 
-    #[test]
-    fn sub_1_1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(1);
-        let e = BigInt::from(0);
-        assert_eq!(a - b, e);
+    macro_rules! test_sub {
+        ($name:ident: $a:expr, $b:expr, $e:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!($a - $b, $e);
+            }
+        };
     }
 
-    #[test]
-    fn sub_1_0() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(0);
-        let e = BigInt::from(1);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(one_one: BigInt::one(), BigInt::one(), 0);
 
-    #[test]
-    fn sub_1_neg1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(2);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(one_zero: BigInt::one(), BigInt::zero(), 1);
 
-    #[test]
-    fn sub_neg1_neg1() {
-        let a = BigInt::from(-1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(0);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(zero_one: BigInt::zero(), BigInt::one(), -1);
 
-    #[test]
-    fn sub_requiring_carry() {
-        let a = BigInt::from(0);
-        let b = BigInt::from(1);
-        let e = BigInt::from(-1);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(zero_zero: BigInt::zero(), BigInt::zero(), 0);
 
-    #[test]
-    fn sub_big_small() {
-        let a = BigInt::from(0xfffffff);
-        let b = BigInt::from(0xac);
-        let e = BigInt::from(0xfffff53);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(carry: BigInt::from(Base::MAX as BaseExt + 1), BigInt::one(), Base::MAX);
 
-    #[test]
-    fn sub_big_big() {
-        let a = BigInt::from(0xfedcba9876543210_i128);
-        let b = BigInt::from(0x1234567890abcdef_i128);
-        let e = BigInt::from(0xeca8641fe5a86421_i128);
-        assert_eq!(a - b, e);
-    }
+    test_sub!(big:
+        BigInt { signed: false, data: vec![Base::MAX - 1, Base::MAX, 1] },
+        BigInt::from(BaseExt::MAX),
+        BaseExt::MAX
+    );
 
-    #[test]
-    fn sub_big_big_negative() {
-        let a = BigInt::from(0x1234567890abcdef_i128);
-        let b = BigInt::from(0xfedcba9876543210_i128);
-        let e = BigInt::from(-0xeca8641fe5a86421_i128);
-        assert_eq!(a - b, e);
+    mod negative {
+        use super::*;
+
+        test_sub!(two_neg_one: BigInt::from(2), BigInt::from(-1), 3);
+
+        test_sub!(one_neg_two: BigInt::one(), BigInt::from(-2), 3);
+
+        test_sub!(neg_one_two: BigInt::from(-1), BigInt::from(2), -3);
+
+        test_sub!(neg_two_one: BigInt::from(-2), BigInt::one(), -3);
+
+        test_sub!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), 0);
+
+        test_sub!(big_inv:
+            BigInt::from(Base::MAX),
+            BigInt { signed: true, data: vec![Base::MAX] },
+            Base::MAX as BaseExt * 2
+        );
+
+        test_sub!(big_neg_big:
+            BigInt::from(Base::MAX - 1),
+            BigInt { signed: true, data: vec![(Base::MAX - 1) / 2] },
+            Base::MAX as BaseExt - 1 + ((Base::MAX - 1) / 2) as BaseExt
+        );
     }
 }

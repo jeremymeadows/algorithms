@@ -26,20 +26,17 @@ impl AddAssign<Self> for BigInt {
                 mem::swap(self, &mut other);
             }
 
-            let mut sum;
             let mut carry = false;
-
             let mut i = 0;
+
             while i < other.data.len() {
-                (sum, carry) = self.data[i].carrying_add(other.data[i], carry);
-                self.data[i] = sum;
+                (self.data[i], carry) = self.data[i].carrying_add(other.data[i], carry);
 
                 i += 1;
             }
 
             while i < self.data.len() {
-                (sum, carry) = self.data[i].carrying_add(0, carry);
-                self.data[i] = sum;
+                (self.data[i], carry) = self.data[i].carrying_add(0, carry);
 
                 i += 1;
             }
@@ -107,100 +104,54 @@ impl_primitave_add!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Base, BaseExt};
 
-    #[test]
-    fn add_1_1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(1);
-        let e = BigInt::from(2);
-        assert_eq!(a + b, e);
+    macro_rules! test_add {
+        ($name:ident: $a:expr, $b:expr, $e:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!($a + $b, $e);
+            }
+        };
     }
 
-    #[test]
-    fn add_0_0() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(1);
-        let e = BigInt::from(2);
-        assert_eq!(a + b, e);
-    }
+    test_add!(one_one: BigInt::one(), BigInt::one(), 2);
 
-    #[test]
-    fn add_requiring_carry() {
-        let a = BigInt::from(255);
-        let b = BigInt::from(1);
-        let e = BigInt::from(256);
-        assert_eq!(a + b, e);
-    }
+    test_add!(one_zero: BigInt::one(), BigInt::zero(), 1);
 
-    #[test]
-    fn add_big_small() {
-        let a = BigInt::from(0xfffffff);
-        let b = BigInt::from(0xac);
-        let e = BigInt::from(0x100000ab);
-        assert_eq!(a + b, e);
-    }
+    test_add!(zero_zero: BigInt::zero(), BigInt::zero(), 0);
 
-    #[test]
-    fn add_big_big() {
-        let a = BigInt::from(0xfedcba9876543210_i128);
-        let b = BigInt::from(0x1234567890abcdef_i128);
-        let e = BigInt::from(0x11111111106ffffff_i128);
-        assert_eq!(a + b, e);
-    }
+    test_add!(carry: BigInt::from(Base::MAX), BigInt::one(), Base::MAX as BaseExt + 1);
 
-    #[test]
-    fn add_big_big_neg() {
-        let a = BigInt::from(0xfedcba9876543210_i128);
-        let b = BigInt::from(-0x1234567890abcdef_i128);
-        let e = BigInt::from(0xeca8641fe5a86421_i128);
-        assert_eq!(a + b, e);
-    }
+    test_add!(big:
+        BigInt::from(BaseExt::MAX),
+        BigInt::from(BaseExt::MAX),
+        BigInt { signed: false, data: vec![Base::MAX - 1, Base::MAX, 1] }
+    );
 
-    #[test]
-    fn add_1_neg1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(0);
-        assert_eq!(a + b, e);
-    }
+    mod negative {
+        use super::*;
 
-    #[test]
-    fn add_2_neg1() {
-        let a = BigInt::from(2);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(1);
-        assert_eq!(a + b, e);
-    }
+        test_add!(two_neg_one: BigInt::from(2), BigInt::from(-1), 1);
 
-    #[test]
-    fn add_1_neg2() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(-2);
-        let e = BigInt::from(-1);
-        assert_eq!(a + b, e);
-    }
+        test_add!(one_neg_two: BigInt::one(), BigInt::from(-2), -1);
 
-    #[test]
-    fn add_neg1_2() {
-        let a = BigInt::from(-1);
-        let b = BigInt::from(2);
-        let e = BigInt::from(1);
-        assert_eq!(a + b, e);
-    }
+        test_add!(neg_one_two: BigInt::from(-1), BigInt::from(2), 1);
 
-    #[test]
-    fn add_neg2_1() {
-        let a = BigInt::from(-2);
-        let b = BigInt::from(1);
-        let e = BigInt::from(-1);
-        assert_eq!(a + b, e);
-    }
+        test_add!(neg_two_one: BigInt::from(-2), BigInt::one(), -1);
 
-    #[test]
-    fn add_neg1_neg1() {
-        let a = BigInt::from(-1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(-2);
-        assert_eq!(a + b, e);
+        test_add!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), -2);
+
+        test_add!(big_inv:
+            BigInt::from(Base::MAX),
+            BigInt { signed: true, data: vec![Base::MAX] },
+            0
+        );
+
+        test_add!(big_neg_big:
+            BigInt::from(Base::MAX - 1),
+            BigInt { signed: true, data: vec![(Base::MAX - 1) / 2] },
+            (Base::MAX - 1) / 2
+        );
     }
 }

@@ -92,7 +92,6 @@ mod tests {
             };
         }
 
-
         test_eq!(eq: BigInt::from(42), BigInt::from(42));
 
         test_eq!(eq_neg: BigInt::from(-42), BigInt::from(-42));
@@ -101,9 +100,9 @@ mod tests {
 
         test_ne!(ne: BigInt::from(42), BigInt::from(64));
 
-        test_eq!(zeroes: BigInt::from(0), BigInt::from(0));
+        test_eq!(zeroes: BigInt::zero(), BigInt::zero());
 
-        test_eq!(zero_eq_negative_zero: BigInt::from(0), BigInt { signed: true, data: vec![0] });
+        test_eq!(zero_eq_neg_zero: BigInt::zero(), BigInt { signed: true, data: vec![0] });
 
         test_eq!(big_eq: BigInt::from(0xfedcba9876543210_u128), BigInt::from(0xfedcba9876543210_u128));
 
@@ -125,11 +124,11 @@ mod tests {
             };
         }
 
-        test_ord!(ord: BigInt::from(1), BigInt::from(2));
+        test_ord!(ord: BigInt::one(), BigInt::from(2));
 
         test_ord!(ord_neg: BigInt::from(-2), BigInt::from(-1));
 
-        test_ord!(neg_lt_pos: BigInt::from(-2), BigInt::from(1));
+        test_ord!(neg_lt_pos: BigInt::from(-2), BigInt::one());
 
         test_ord!(diff_data_size:
             BigInt { signed: false, data: vec![Base::MAX] },

@@ -19,7 +19,7 @@ impl MulAssign<Self> for BigInt {
         }
 
         if *self == 0 || other == 0 {
-            *self = BigInt::from(0);
+            *self = BigInt::zero();
         } else if *self == 1 {
             *self = other;
         } else if other != 1 {
@@ -115,68 +115,38 @@ impl_primitive_mul!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BaseExt;
 
-    #[test]
-    fn mul_1_1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(1);
-        let e = BigInt::from(1);
-        assert_eq!(a * b, e);
+    macro_rules! test_mul {
+        ($name:ident: $a:expr, $b:expr, $e:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!($a * $b, $e);
+            }
+        };
     }
 
-    #[test]
-    fn mul_1_0() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(0);
-        let e = BigInt::from(0);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(one_one: BigInt::one(), BigInt::one(), 1);
 
-    #[test]
-    fn mul_1_neg1() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(-1);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(one_zero: BigInt::one(), BigInt::zero(), 0);
 
-    #[test]
-    fn mul_neg1_neg1() {
-        let a = BigInt::from(-1);
-        let b = BigInt::from(-1);
-        let e = BigInt::from(1);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(one_neg_one: BigInt::one(), BigInt::from(-1), -1);
 
-    #[test]
-    fn mul_requiring_carry() {
-        let a = BigInt::from(128);
-        let b = BigInt::from(2);
-        let e = BigInt::from(256);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), 1);
 
-    #[test]
-    fn mul_small_small() {
-        let a = BigInt::from(42);
-        let b = BigInt::from(37);
-        let e = BigInt::from(1554);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(small_small: BigInt::from(42), BigInt::from(37), 1554);
 
-    #[test]
-    fn mul_big_small() {
-        let a = BigInt::from(0xfffffff);
-        let b = BigInt::from(0xac);
-        let e = BigInt::from(0xabfffff54_i64);
-        assert_eq!(a * b, e);
-    }
+    test_mul!(carry: BigInt::from(Base::MAX), BigInt::from(2), Base::MAX as BaseExt * 2);
 
-    #[test]
-    fn mul_big_big() {
-        let a = BigInt::from(0xfedcba9876543210_i128);
-        let b = BigInt::from(0x1234567890abcdef_i128);
-        let e = BigInt::from(0x11111111106ffffff_i128);
-        assert_eq!(a + b, e);
-    }
+    test_mul!(big:
+        BigInt::from(Base::MAX),
+        BigInt::from(Base::MAX),
+        Base::MAX as BaseExt * Base::MAX as BaseExt
+    );
+
+    test_mul!(bigger:
+        BigInt::from(BaseExt::MAX),
+        BigInt::from(BaseExt::MAX),
+        BigInt { signed: false, data: vec![1, 0, Base::MAX - 1, Base::MAX] }
+    );
 }

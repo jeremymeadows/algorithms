@@ -148,9 +148,9 @@ mod tests {
         };
     }
 
-    test_fmts!(zero: BigInt::from(0), "0", "0", "0", "0");
+    test_fmts!(zero: BigInt::zero(), "0", "0", "0", "0");
 
-    test_fmts!(one: BigInt::from(1), "1", "1", "1", "1");
+    test_fmts!(one: BigInt::one(), "1", "1", "1", "1");
 
     test_fmts!(two: BigInt::from(2), "2", "10", "2", "2");
 

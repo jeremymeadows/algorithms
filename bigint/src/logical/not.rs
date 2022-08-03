@@ -20,6 +20,9 @@ impl Not for BigInt {
         if overflow {
             self.data.push(1);
         }
+        while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
+            self.data.pop();
+        }
 
         self.signed ^= true;
         self
@@ -29,49 +32,30 @@ impl Not for BigInt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BaseExt;
 
-    #[test]
-    fn not_0() {
-        assert_eq!(!BigInt::from(0), -1);
-    }
-
-    #[test]
-    fn not_1() {
-        assert_eq!(!BigInt::from(1), -2);
-    }
-
-    #[test]
-    fn not_neg_1() {
-        assert_eq!(!BigInt::from(-1), 0);
-    }
-
-    #[test]
-    fn not_neg_2() {
-        assert_eq!(!BigInt::from(-2), 1);
-    }
-
-    #[test]
-    fn not_max() {
-        assert_eq!(
-            !BigInt::from(Base::MAX),
-            BigInt {
-                signed: true,
-                data: vec![0, 1]
+    macro_rules! test_not {
+        ($name:ident: $a:expr, $e:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!(!$a, $e);
             }
-        );
+        };
     }
 
-    #[test]
-    fn not_max_max() {
-        assert_eq!(
-            !BigInt {
-                signed: false,
-                data: vec![Base::MAX, 1]
-            },
-            BigInt {
-                signed: true,
-                data: vec![0, 2]
-            }
-        );
-    }
+    test_not!(zero: BigInt::zero(), -1);
+
+    test_not!(one: BigInt::one(), -2);
+
+    test_not!(neg_one: BigInt::from(-1), 0);
+
+    test_not!(neg_2: BigInt::from(-2), 1);
+
+    test_not!(max: BigInt::from(Base::MAX), BigInt { signed: true, data: vec![0, 1] });
+
+    test_not!(max_inv: BigInt { signed: true, data: vec![0, 1] }, Base::MAX);
+
+    test_not!(big: BigInt::from(BaseExt::MAX), BigInt { signed: true, data: vec![0, 0, 1] });
+
+    test_not!(big_inv: BigInt { signed: true, data: vec![0, 0, 1] }, BaseExt::MAX);
 }

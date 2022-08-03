@@ -24,9 +24,20 @@ pub struct BigInt {
 
 impl BigInt {
     pub fn new() -> Self {
+        BigInt::zero()
+    }
+
+    pub fn zero() -> Self {
         Self {
             signed: false,
             data: vec![0],
+        }
+    }
+
+    pub fn one() -> Self {
+        Self {
+            signed: false,
+            data: vec![1],
         }
     }
 
@@ -41,7 +52,7 @@ impl BigInt {
 
 impl Default for BigInt {
     fn default() -> Self {
-        Self::new()
+        Self::zero()
     }
 }
 

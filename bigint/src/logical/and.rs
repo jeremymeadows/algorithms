@@ -24,22 +24,18 @@ impl BitAnd for BigInt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Base;
 
-    #[test]
-    fn and_1_0() {
-        let a = BigInt::from(1);
-        let b = BigInt::from(0);
-        let c = BigInt::from(0);
-
-        assert_eq!(a & b, c);
+    macro_rules! test_and {
+        ($name:ident: $a:expr, $b:expr, $e:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!($a & $b, $e);
+            }
+        };
     }
 
-    #[test]
-    fn and_257_1() {
-        let a = BigInt::from(257);
-        let b = BigInt::from(1);
-        let c = BigInt::from(1);
+    test_and!(zero: BigInt::one(), BigInt::zero(), 0);
 
-        assert_eq!(a & b, c);
-    }
+    test_and!(one: BigInt::from(Base::MAX), BigInt::one(), 1);
 }
