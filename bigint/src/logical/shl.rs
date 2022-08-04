@@ -20,7 +20,7 @@ macro_rules! impl_primitive_shl {
 
                     while len > 0 {
                         let mut v = vec![0; self.data.len()];
-                        let l = std::cmp::min(BITS - 1, len);
+                        let l = len.clamp(0, BITS - 1);
 
                         for i in 0..(self.data.len()) {
                             let val = self.data[i] << l;
@@ -44,7 +44,7 @@ macro_rules! impl_primitive_shl {
     }
 }
 
-impl_primitive_shl!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_primitive_shl!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 #[cfg(test)]
 mod tests {
@@ -62,9 +62,24 @@ mod tests {
 
     test_shl!(one: BigInt::from(0b1), 4, 0b10000);
 
-    test_shl!(carry: BigInt::from(Base::MAX), 1, (Base::MAX as BaseExt) << 1);
+    test_shl!(
+        carry: BigInt::from(Base::MAX),
+        1,
+        (Base::MAX as BaseExt) << 1
+    );
 
-    test_shl!(overflow: BigInt::one(), Base::BITS, Base::MAX as BaseExt + 1);
+    test_shl!(
+        overflow: BigInt::one(),
+        Base::BITS,
+        Base::MAX as BaseExt + 1
+    );
 
-    test_shl!(big: BigInt::one(), BaseExt::BITS, BigInt { signed: false, data: vec![0, 0, 1] });
+    test_shl!(
+        big: BigInt::one(),
+        BaseExt::BITS,
+        BigInt {
+            signed: false,
+            data: vec![0, 0, 1]
+        }
+    );
 }

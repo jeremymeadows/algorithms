@@ -20,7 +20,7 @@ macro_rules! impl_primitive_shr {
 
                     while len > 0 {
                         let mut v = vec![0; self.data.len()];
-                        let l = std::cmp::min(BITS - 1, len);
+                        let l = len.clamp(0, BITS - 1);
 
                         for i in (0..(self.data.len())).rev() {
                             let val = self.data[i] >> l;
@@ -33,7 +33,7 @@ macro_rules! impl_primitive_shr {
                         }
                         self.data = v;
 
-                        while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
+                        while self.data.ends_with(&[0]) && self.data.len() > 1 {
                             self.data.pop();
                         }
                         len = len.saturating_sub(BITS - 1);
@@ -44,7 +44,7 @@ macro_rules! impl_primitive_shr {
     }
 }
 
-impl_primitive_shr!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_primitive_shr!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 #[cfg(test)]
 mod tests {

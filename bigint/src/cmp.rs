@@ -58,6 +58,30 @@ macro_rules! impl_primitive_cmp {
                     Some(self.cmp(&BigInt::from(*other)))
                 }
             }
+
+            impl PartialEq<$t> for &BigInt {
+                fn eq(&self, other: &$t) -> bool {
+                    *self == &BigInt::from(*other)
+                }
+            }
+
+            impl PartialOrd<$t> for &BigInt {
+                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                    Some(self.cmp(&&BigInt::from(*other)))
+                }
+            }
+
+            impl PartialEq<$t> for &mut BigInt {
+                fn eq(&self, other: &$t) -> bool {
+                    *self == &BigInt::from(*other)
+                }
+            }
+
+            impl PartialOrd<$t> for &mut BigInt {
+                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                    Some(self.cmp(&&mut BigInt::from(*other)))
+                }
+            }
         )*
     }
 }
@@ -102,7 +126,13 @@ mod tests {
 
         test_eq!(zeroes: BigInt::zero(), BigInt::zero());
 
-        test_eq!(zero_eq_neg_zero: BigInt::zero(), BigInt { signed: true, data: vec![0] });
+        test_eq!(
+            zero_eq_neg_zero: BigInt::zero(),
+            BigInt {
+                signed: true,
+                data: vec![0]
+            }
+        );
 
         test_eq!(big_eq: BigInt::from(0xfedcba9876543210_u128), BigInt::from(0xfedcba9876543210_u128));
 

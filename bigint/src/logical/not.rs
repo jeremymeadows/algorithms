@@ -20,7 +20,7 @@ impl Not for BigInt {
         if overflow {
             self.data.push(1);
         }
-        while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
+        while self.data.ends_with(&[0]) && self.data.len() > 1 {
             self.data.pop();
         }
 
@@ -51,11 +51,23 @@ mod tests {
 
     test_not!(neg_2: BigInt::from(-2), 1);
 
-    test_not!(max: BigInt::from(Base::MAX), BigInt { signed: true, data: vec![0, 1] });
+    test_not!(
+        max: BigInt::from(Base::MAX),
+        BigInt {
+            signed: true,
+            data: vec![0, 1]
+        }
+    );
 
     test_not!(max_inv: BigInt { signed: true, data: vec![0, 1] }, Base::MAX);
 
-    test_not!(big: BigInt::from(BaseExt::MAX), BigInt { signed: true, data: vec![0, 0, 1] });
+    test_not!(
+        big: BigInt::from(BaseExt::MAX),
+        BigInt {
+            signed: true,
+            data: vec![0, 0, 1]
+        }
+    );
 
     test_not!(big_inv: BigInt { signed: true, data: vec![0, 0, 1] }, BaseExt::MAX);
 }

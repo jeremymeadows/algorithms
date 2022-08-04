@@ -19,10 +19,9 @@ impl AddAssign<Self> for BigInt {
                 mem::swap(self, &mut other);
             }
             other.signed = false;
-
             *self -= other;
         } else {
-            if *self < other {
+            if self.abs() < other.abs() {
                 mem::swap(self, &mut other);
             }
 
@@ -31,13 +30,10 @@ impl AddAssign<Self> for BigInt {
 
             while i < other.data.len() {
                 (self.data[i], carry) = self.data[i].carrying_add(other.data[i], carry);
-
                 i += 1;
             }
-
             while i < self.data.len() {
                 (self.data[i], carry) = self.data[i].carrying_add(0, carry);
-
                 i += 1;
             }
 
@@ -121,12 +117,19 @@ mod tests {
 
     test_add!(zero_zero: BigInt::zero(), BigInt::zero(), 0);
 
-    test_add!(carry: BigInt::from(Base::MAX), BigInt::one(), Base::MAX as BaseExt + 1);
+    test_add!(
+        carry: BigInt::from(Base::MAX),
+        BigInt::one(),
+        Base::MAX as BaseExt + 1
+    );
 
-    test_add!(big:
+    test_add!(
+        big: BigInt::from(BaseExt::MAX),
         BigInt::from(BaseExt::MAX),
-        BigInt::from(BaseExt::MAX),
-        BigInt { signed: false, data: vec![Base::MAX - 1, Base::MAX, 1] }
+        BigInt {
+            signed: false,
+            data: vec![Base::MAX - 1, Base::MAX, 1]
+        }
     );
 
     mod negative {
@@ -142,9 +145,12 @@ mod tests {
 
         test_add!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), -2);
 
-        test_add!(big_inv:
-            BigInt::from(Base::MAX),
-            BigInt { signed: true, data: vec![Base::MAX] },
+        test_add!(
+            big_inv: BigInt::from(Base::MAX),
+            BigInt {
+                signed: true,
+                data: vec![Base::MAX]
+            },
             0
         );
 

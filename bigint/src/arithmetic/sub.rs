@@ -15,16 +15,12 @@ impl Sub<Self> for BigInt {
 impl SubAssign<Self> for BigInt {
     fn sub_assign(&mut self, mut other: Self) {
         if self.signed ^ other.signed {
-            if self.signed {
-                other.signed = true;
-            } else if other.signed {
-                other.signed = false;
-            }
+            other.signed = self.signed;
             *self += other;
         } else {
             if self.abs() < other.abs() {
                 mem::swap(self, &mut other);
-                self.signed = true;
+                self.signed ^= true;
             }
 
             let mut overflow;
@@ -36,7 +32,6 @@ impl SubAssign<Self> for BigInt {
                 let mut j = i + 1;
                 while overflow && j < self.data.len() {
                     (self.data[j], overflow) = self.data[j].overflowing_sub(1);
-
                     j += 1;
                 }
 
@@ -44,7 +39,7 @@ impl SubAssign<Self> for BigInt {
             }
         }
 
-        while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
+        while self.data.ends_with(&[0]) && self.data.len() > 1 {
             self.data.pop();
         }
     }
@@ -146,9 +141,12 @@ mod tests {
 
         test_sub!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), 0);
 
-        test_sub!(big_inv:
-            BigInt::from(Base::MAX),
-            BigInt { signed: true, data: vec![Base::MAX] },
+        test_sub!(
+            big_inv: BigInt::from(Base::MAX),
+            BigInt {
+                signed: true,
+                data: vec![Base::MAX]
+            },
             Base::MAX as BaseExt * 2
         );
 

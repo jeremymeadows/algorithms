@@ -18,29 +18,27 @@ impl MulAssign<Self> for BigInt {
             mem::swap(self, &mut other);
         }
 
-        if *self == 0 || other == 0 {
+        if self == 0 || other == 0 {
             *self = BigInt::zero();
-        } else if *self == 1 {
-            *self = other;
-        } else if other != 1 {
+        } else if self.abs() == 1 {
+            self.signed = self.signed ^ other.signed;
+            self.data = other.data;
+        } else if other.abs() != 1 {
             let mut chunks = vec![0 as Base; self.data.len() + other.data.len()];
-            let (mut prod, mut overflow);
-            let mut carry = 0;
+            let (mut prod, mut carry, mut overflow);
 
             for i in 0..(self.data.len()) {
                 for j in 0..(other.data.len()) {
-                    (prod, carry) = self.data[i].carrying_mul(other.data[j], carry);
-                    (chunks[i], overflow) = chunks[i].carrying_add(prod, false);
+                    (prod, carry) = self.data[i].carrying_mul(other.data[j], 0);
 
-                    let mut k = i + 1;
+                    let mut k = i + j;
+                    (chunks[k], overflow) = chunks[k].overflowing_add(prod);
+                    k += 1;
+                    (chunks[k], overflow) = chunks[k].carrying_add(carry, overflow);
+
                     while overflow {
-                        if k < chunks.len() {
-                            (chunks[k], overflow) = chunks[k].carrying_add(0, overflow);
-                        } else {
-                            chunks.push(1);
-                            overflow = false
-                        }
                         k += 1;
+                        (chunks[k], overflow) = chunks[k].carrying_add(0, overflow);
                     }
                 }
             }
@@ -49,12 +47,8 @@ impl MulAssign<Self> for BigInt {
                 chunks.pop();
             }
 
-            if carry > 0 {
-                chunks.push(carry);
-            }
-
-            self.data = chunks;
             self.signed = self.signed ^ other.signed;
+            self.data = chunks;
         }
     }
 }
@@ -134,19 +128,26 @@ mod tests {
 
     test_mul!(neg_one_neg_one: BigInt::from(-1), BigInt::from(-1), 1);
 
-    test_mul!(small_small: BigInt::from(42), BigInt::from(37), 1554);
+    test_mul!(small_small: BigInt::from(42u8), BigInt::from(6u8), 252u8);
 
-    test_mul!(carry: BigInt::from(Base::MAX), BigInt::from(2), Base::MAX as BaseExt * 2);
+    test_mul!(
+        carry: BigInt::from(Base::MAX),
+        BigInt::from(2),
+        Base::MAX as BaseExt * 2
+    );
 
-    test_mul!(big:
-        BigInt::from(Base::MAX),
+    test_mul!(
+        big: BigInt::from(Base::MAX),
         BigInt::from(Base::MAX),
         Base::MAX as BaseExt * Base::MAX as BaseExt
     );
 
-    test_mul!(bigger:
+    test_mul!(
+        bigger: BigInt::from(BaseExt::MAX),
         BigInt::from(BaseExt::MAX),
-        BigInt::from(BaseExt::MAX),
-        BigInt { signed: false, data: vec![1, 0, Base::MAX - 1, Base::MAX] }
+        BigInt {
+            signed: false,
+            data: vec![1, 0, Base::MAX - 1, Base::MAX]
+        }
     );
 }

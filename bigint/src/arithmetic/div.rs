@@ -4,39 +4,35 @@ use crate::BigInt;
 
 impl BigInt {
     pub(crate) fn div_rem(mut self, other: Self) -> (BigInt, BigInt) {
-        assert!(other != 0, "attempt to divide by 0");
+        assert!(other != 0, "attempt to divide by zero");
         let mut rem = BigInt::zero();
 
         if self.abs() < other.abs() {
             rem = self.clone();
-            self.data = vec![0];
+            self = BigInt::zero();
         } else if self.abs() == other.abs() {
+            self.signed = self.signed ^ other.signed;
             self.data = vec![1];
         } else if other.abs() != 1 {
-            let mut q = Vec::new();
+            let mut quot = BigInt::zero();
 
-            if other.data.len() == 1 {
-                for i in self.data.iter() {
-                    q.push(i / other.data[0]);
+            for i in (0..(self.bits())).rev() {
+                rem <<= 1;
+                rem |= (self.clone() >> i) & 1;
+
+                if rem >= other {
+                    rem -= &other;
+                    quot |= BigInt::one() << i;
                 }
-
-                rem = &self
-                    - (&other
-                        * BigInt {
-                            signed: false,
-                            data: q.clone(),
-                        });
-                self.data = q;
-            } else {
-                todo!();
+            }
+            while self.data.ends_with(&[0]) && self.data.len() > 1 {
+                self.data.pop();
             }
 
-            // while self.data.len() > 1 && self.data[self.data.len() - 1] == 0 {
-            //     self.data.pop();
-            // }
+            self.signed = self.signed ^ other.signed;
+            self.data = quot.data;
         }
 
-        self.signed = self.signed ^ other.signed;
         (self, rem)
     }
 }
@@ -133,15 +129,29 @@ mod tests {
 
     test_div!(neg_two_neg_two: BigInt::from(-2), BigInt::from(-2), 1);
 
-    test_div!(small_small: BigInt::from(1554), BigInt::from(37), 42);
+    test_div!(small_small: BigInt::from(252u8), BigInt::from(6u8), 42u8);
 
-    test_div!(carry: BigInt::from(Base::MAX), BigInt::from(2), Base::MAX / 2);
+    test_div!(
+        carry: BigInt::from(Base::MAX),
+        BigInt::from(2),
+        Base::MAX / 2
+    );
 
-    test_div!(big: BigInt::from(BaseExt::MAX), BigInt::from(0x1234), BaseExt::MAX / 0x1234);
+    test_div!(
+        big: BigInt::from(BaseExt::MAX),
+        BigInt::from(0x1234),
+        BaseExt::MAX / 0x1234
+    );
 
     test_div!(bigger:
         BigInt { signed: false, data: vec![1, 0, Base::MAX - 1, Base::MAX] },
         BigInt::from(BaseExt::MAX),
         BigInt::from(BaseExt::MAX)
     );
+
+    #[test]
+    #[should_panic = "attempt to divide by zero"]
+    fn divide_by_zero() {
+        _ = BigInt::one() / BigInt::zero();
+    }
 }

@@ -48,6 +48,48 @@ impl BigInt {
     pub fn is_negative(&self) -> bool {
         *self < 0
     }
+
+    /// returns the number of bits representing the number, ignoring leading zeros
+    pub fn bits(&self) -> usize {
+        let len = self.data.len();
+        len * Base::BITS as usize - self.data[len - 1].leading_zeros() as usize
+    }
+
+    pub fn count_ones(&self) -> Self {
+        self.data
+            .iter()
+            .fold(BigInt::zero(), |acc, x| acc + x.count_ones())
+    }
+
+    pub fn count_zeroes(&self) -> Self {
+        self.data
+            .iter()
+            .fold(BigInt::zero(), |acc, x| acc + x.count_zeros())
+    }
+
+    pub fn trailing_ones(&self) -> Self {
+        let mut x = BigInt::zero();
+        for i in self.data.iter() {
+            let b = i.trailing_ones();
+            x += b;
+            if b != Base::BITS {
+                break;
+            }
+        }
+        x
+    }
+
+    pub fn trailing_zeroes(&self) -> Self {
+        let mut x = BigInt::zero();
+        for i in self.data.iter() {
+            let b = i.trailing_zeros();
+            x += b;
+            if b != Base::BITS {
+                break;
+            }
+        }
+        x
+    }
 }
 
 impl Default for BigInt {

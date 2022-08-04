@@ -1,14 +1,21 @@
 use std::mem;
-use std::ops::BitOr;
+use std::ops::{BitOr, BitOrAssign};
 
 use crate::BigInt;
 
 impl BitOr for BigInt {
     type Output = Self;
 
-    fn bitor(mut self, mut other: Self) -> Self::Output {
+    fn bitor(mut self, other: Self) -> Self::Output {
+        self |= other;
+        self
+    }
+}
+
+impl BitOrAssign for BigInt {
+    fn bitor_assign(&mut self, mut other: Self) {
         if self.data.len() < other.data.len() {
-            mem::swap(&mut self, &mut other);
+            mem::swap(self, &mut other);
         }
 
         for i in 0..self.data.len() {
@@ -16,10 +23,30 @@ impl BitOr for BigInt {
                 self.data[i] |= other.data[i];
             }
         }
-
-        self
     }
 }
+
+macro_rules! impl_primitive_or {
+    ($($t:ty),*) => {
+        $(
+            impl BitOr<$t> for BigInt {
+                type Output = Self;
+
+                fn bitor(self, other: $t) -> Self::Output {
+                    self | BigInt::from(other)
+                }
+            }
+
+            impl BitOrAssign<$t> for BigInt {
+                fn bitor_assign(&mut self, other: $t) {
+                    *self = self.clone() | other;
+                }
+            }
+        )*
+    }
+}
+
+impl_primitive_or!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {
