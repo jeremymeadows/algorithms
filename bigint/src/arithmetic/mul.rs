@@ -3,6 +3,24 @@ use std::ops::{Mul, MulAssign};
 
 use crate::{Base, BigInt};
 
+impl BigInt {
+    pub fn pow(&self, exp: &BigInt) -> Self {
+        if exp == 0 {
+            return BigInt::one();
+        }
+
+        let base = self.clone();
+        let mut val = self.clone();
+        let mut exp = exp.clone();
+
+        while exp > 0 {
+            val *= base.clone();
+            exp -= 1;
+        }
+        val
+    }
+}
+
 impl Mul for BigInt {
     type Output = Self;
 

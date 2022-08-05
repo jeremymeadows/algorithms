@@ -80,6 +80,7 @@ mod tests {
             #[test]
             fn $name() {
                 assert_eq!($a % $b, $e);
+                assert_eq!($b * ($a / $b) + $a % $b, $a);
             }
         };
     }
@@ -88,9 +89,11 @@ mod tests {
 
     test_rem!(all: BigInt::from(0xfu8), BigInt::from(0x10u8), 0xf);
 
-    test_rem!(even: BigInt::from(0x10u8), BigInt::from(2), 0);
+    test_rem!(even: BigInt::from(10), BigInt::from(2), 0);
 
-    test_rem!(odd: BigInt::from(0x11u8), BigInt::from(2), 1);
+    test_rem!(odd: BigInt::from(11), BigInt::from(2), 1);
+
+    test_rem!(negative: BigInt::from(-7), BigInt::from(-3), -1);
 
     test_rem!(small: BigInt::from(0xffu8), BigInt::from(0x42u8), 0x39u8);
 

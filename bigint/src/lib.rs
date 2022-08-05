@@ -1,4 +1,5 @@
 #![feature(bigint_helper_methods)]
+#![feature(let_chains)]
 
 pub mod arithmetic;
 pub mod cmp;
@@ -23,10 +24,7 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    pub fn new() -> Self {
-        BigInt::zero()
-    }
-
+    /// Creates a `BigInt` with the value of `0`
     pub fn zero() -> Self {
         Self {
             signed: false,
@@ -34,6 +32,7 @@ impl BigInt {
         }
     }
 
+    /// Creates a `BigInt` with the value of `1`
     pub fn one() -> Self {
         Self {
             signed: false,
@@ -41,37 +40,53 @@ impl BigInt {
         }
     }
 
+    /// Returns true if `self` is greater than `0`
     pub fn is_positive(&self) -> bool {
         *self > 0
     }
 
+    /// Returns true if `self` is less than `0`
     pub fn is_negative(&self) -> bool {
         *self < 0
     }
 
-    /// returns the number of bits representing the number, ignoring leading zeros
+    /// Returns `1` is `is_positive()`, `-1` if `is_negative()`, or `0` otherwise.
+    pub fn signum(&self) -> i8 {
+        if self.data == &[0] {
+            0
+        } else {
+            if self.signed {
+                -1
+            } else {
+                1
+            }
+        }
+    }
+
+    /// Returns the number of bits representing the number, ignoring leading zeros.
     pub fn bits(&self) -> usize {
         let len = self.data.len();
         len * Base::BITS as usize - self.data[len - 1].leading_zeros() as usize
     }
 
-    pub fn count_ones(&self) -> Self {
+    /// Returns the number of ones in the binary representation of the number.
+    pub fn count_ones(&self) -> usize {
         self.data
             .iter()
-            .fold(BigInt::zero(), |acc, x| acc + x.count_ones())
+            .fold(0, |acc, x| acc + x.count_ones() as usize)
     }
 
-    pub fn count_zeroes(&self) -> Self {
-        self.data
-            .iter()
-            .fold(BigInt::zero(), |acc, x| acc + x.count_zeros())
+    /// Returns the number of zeros in the binary representation of the number, ignoring leading zeros.
+    pub fn count_zeros(&self) -> usize {
+        self.bits() - self.count_ones()
     }
 
-    pub fn trailing_ones(&self) -> Self {
-        let mut x = BigInt::zero();
+    /// Returns the number of trailing ones in the binary representation of the number.
+    pub fn trailing_ones(&self) -> usize {
+        let mut x = 0usize;
         for i in self.data.iter() {
             let b = i.trailing_ones();
-            x += b;
+            x += b as usize;
             if b != Base::BITS {
                 break;
             }
@@ -79,11 +94,12 @@ impl BigInt {
         x
     }
 
-    pub fn trailing_zeroes(&self) -> Self {
-        let mut x = BigInt::zero();
+    /// Returns the number of trailing zeros in the binary representation of the number.
+    pub fn trailing_zeros(&self) -> usize {
+        let mut x = 0usize;
         for i in self.data.iter() {
             let b = i.trailing_zeros();
-            x += b;
+            x += b as usize;
             if b != Base::BITS {
                 break;
             }

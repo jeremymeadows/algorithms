@@ -1,125 +1,66 @@
 use std::fmt::{self, Binary, Display, Formatter, LowerHex, Octal, UpperHex};
 
-use crate::{Base, BigInt};
+use crate::BigInt;
 
 impl BigInt {
-    fn to_string_radix(&self, radix: u8) -> String {
-        assert!(2 <= radix && radix <= 36, "radix must be within 2..=36");
+    /// Converts a `BigInt` into a string with the given base. Panics if `radix` is not in `2..=36`.
+    pub fn to_string_radix(&self, radix: u8) -> String {
+        assert!((2..=36).contains(&radix), "radix must be within 2..=36");
 
-        let mut s = String::new();
-        if *self == 0 {
-            s.push('0');
+        if self == 0 {
+            return "0".to_string();
         }
-        _ = s;
-        todo!()
+
+        let radix = BigInt::from(radix);
+        let mut val = self.clone();
+        let mut s = String::new();
+        let mut rem;
+
+        while val.abs() > 0 {
+            (val, rem) = val.div_rem(radix.clone());
+            let r = u8::try_from(rem).unwrap();
+
+            s.push(match r {
+                0..=9 => r + b'0',
+                10..=26 => r + b'a' - 10,
+                _ => unreachable!(),
+            } as char);
+        }
+
+        if self.is_negative() {
+            s.push('-');
+        }
+        s.chars().rev().collect()
     }
 }
 
 impl Display for BigInt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if *self == 0 {
-            return write!(f, "0");
-        }
-
         write!(f, "{}", self.to_string_radix(10))
     }
 }
 
 impl Binary for BigInt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if *self == 0 {
-            return write!(f, "0");
-        }
-
-        let digits = Base::BITS as usize;
-        let s = self
-            .data
-            .iter()
-            .rev()
-            .map(|e| format!("{:0digits$b}", e))
-            .collect::<String>();
-
-        write!(
-            f,
-            "{}{}",
-            if self.signed { "-" } else { "" },
-            s.trim_start_matches("0")
-        )
+        write!(f, "{}", self.to_string_radix(2))
     }
 }
 
 impl Octal for BigInt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if *self == 0 {
-            return write!(f, "0");
-        }
-
-        let mut bin = format!("{:b}", self);
-        while bin.len() % 3 != 0 {
-            bin = format!("0{bin}");
-        }
-
-        let s = bin
-            .chars()
-            .collect::<Vec<char>>()
-            .chunks(3)
-            .map(|e| e.iter().collect::<String>())
-            .map(|e| Base::from_str_radix(&e, 2).unwrap().to_string())
-            .collect::<String>();
-
-        write!(
-            f,
-            "{}{}",
-            if self.signed { "-" } else { "" },
-            s.trim_start_matches("0")
-        )
+        write!(f, "{}", self.to_string_radix(8))
     }
 }
 
 impl LowerHex for BigInt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if *self == 0 {
-            return write!(f, "0");
-        }
-
-        let digits = Base::BITS as usize / 4;
-        let s = self
-            .data
-            .iter()
-            .rev()
-            .map(|e| format!("{:0digits$x}", e))
-            .collect::<String>();
-
-        write!(
-            f,
-            "{}{}",
-            if self.signed { "-" } else { "" },
-            s.trim_start_matches("0")
-        )
+        write!(f, "{}", self.to_string_radix(16))
     }
 }
 
 impl UpperHex for BigInt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if *self == 0 {
-            println!("here");
-            return write!(f, "0");
-        }
-
-        let digits = Base::BITS as usize / 4;
-        let s = self
-            .data
-            .iter()
-            .rev()
-            .map(|e| format!("{:0digits$X}", e))
-            .collect::<String>();
-
-        write!(
-            f,
-            "{}{}",
-            if self.signed { "-" } else { "" },
-            s.trim_start_matches("0")
-        )
+        write!(f, "{}", self.to_string_radix(16).to_uppercase())
     }
 }
 
@@ -131,7 +72,7 @@ mod tests {
         ($name:ident: $a:expr, $dec:literal, $bin:expr, $oct:expr, $hex:expr) => {
             #[test]
             fn $name() {
-                // assert_eq!($a.to_string(), $dec, "failed decimal output");
+                assert_eq!($a.to_string(), $dec, "failed decimal output");
                 assert_eq!(format!("{:b}", $a), $bin, "failed binary output");
                 assert_eq!(format!("{:o}", $a), $oct, "failed octal output");
                 assert_eq!(

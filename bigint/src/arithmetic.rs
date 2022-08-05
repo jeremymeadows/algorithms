@@ -1,5 +1,6 @@
 pub mod add;
 pub mod div;
+pub mod modulo;
 pub mod mul;
 pub mod rem;
 pub mod sub;
@@ -7,22 +8,11 @@ pub mod sub;
 use crate::BigInt;
 
 impl BigInt {
+    /// Returns the absolute value of a `BigInt`.
     pub fn abs(&self) -> Self {
         BigInt {
             signed: false,
             data: self.data.clone(),
-        }
-    }
-
-    pub fn signum(&self) -> i8 {
-        if self.data == &[0] {
-            0
-        } else {
-            if self.signed {
-                -1
-            } else {
-                1
-            }
         }
     }
 }

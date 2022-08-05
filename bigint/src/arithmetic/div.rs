@@ -20,8 +20,8 @@ impl BigInt {
                 rem <<= 1;
                 rem |= (self.clone() >> i) & 1;
 
-                if rem >= other {
-                    rem -= &other;
+                if rem >= other.abs() {
+                    rem -= other.abs();
                     quot |= BigInt::one() << i;
                 }
             }
@@ -29,6 +29,7 @@ impl BigInt {
                 self.data.pop();
             }
 
+            rem.signed = self.signed;
             self.signed = self.signed ^ other.signed;
             self.data = quot.data;
         }
@@ -115,6 +116,7 @@ mod tests {
             #[test]
             fn $name() {
                 assert_eq!($a / $b, $e);
+                assert_eq!($b * ($a / $b) + $a % $b, $a);
             }
         };
     }
@@ -129,7 +131,11 @@ mod tests {
 
     test_div!(neg_two_neg_two: BigInt::from(-2), BigInt::from(-2), 1);
 
-    test_div!(small_small: BigInt::from(252u8), BigInt::from(6u8), 42u8);
+    test_div!(small_small: BigInt::from(252), BigInt::from(6), 42);
+
+    test_div!(negative: BigInt::from(-7), BigInt::from(-3), 2);
+
+    test_div!(both_pos: BigInt::from(7), BigInt::from(3), 2);
 
     test_div!(
         carry: BigInt::from(Base::MAX),
