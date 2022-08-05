@@ -1,26 +1,86 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ArgParser {
-    args: Vec<Arg>,
-    pub arg_values: HashMap<String, ArgType>,
+    pub args: Vec<Arg>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Arg {
-    pub name: &'static str,
-    pub short: Option<char>,
-    pub long: Option<&'static str>,
-    //help: Option<String>,
-    pub required: bool,
-    pub multiple: bool,
-    pub value: bool,
+    name: &'static str,
+    description: &'static str,
+    long: Option<&'static str>,
+    short: Option<char>,
+    required: bool,
+    value: ArgValue,
 }
 
 #[derive(Debug)]
-pub enum ArgType {
-    Flag,
-    Value(String),
+pub enum ArgValue {
+    Flag(bool),
+    Counter(u8),
+    Value(Option<String>),
+    List(Vec<String>),
+}
+
+impl Default for ArgValue {
+    fn default() -> Self {
+        Self::Flag(false)
+    }
+}
+
+impl Display for ArgValue {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ArgValue::Flag(x) => write!(f, "{}", x),
+            ArgValue::Counter(c) => write!(f, "{}", c),
+            ArgValue::Value(Some(v)) => write!(f, "{}", v),
+            ArgValue::List(v) => write!(f, "{:?}", v),
+            ArgValue::Value(None) => write!(f, "None"),
+        }
+    }
+}
+
+impl Arg {
+    pub fn new(name: &'static str) -> Self {
+        Arg {
+            name: name,
+            ..Default::default()
+        }
+    }
+
+    pub fn description(mut self, description: &'static str) -> Self {
+        self.description = description;
+        self
+    }
+
+    pub fn long(mut self, long: &'static str) -> Self {
+        self.long = Some(long);
+        self
+    }
+
+    pub fn short(mut self, short: char) -> Self {
+        self.short = Some(short);
+        self
+    }
+
+    pub fn required(mut self) -> Self {
+        self.required = true;
+        self
+    }
+
+    pub fn value(mut self) -> Self {
+        self.value = ArgValue::Value(None);
+        self
+    }
+
+    pub fn default(mut self, val: ArgValue) -> Self {
+        self.value = val;
+        self
+    }
 }
 
 impl ArgParser {
@@ -33,105 +93,109 @@ impl ArgParser {
         self
     }
 
+    fn parse_error(&self, msg: &str) -> ! {
+        eprintln!("{}", msg);
+        println!("{{ usage/help test here }}");
+        println!("{self:?}");
+        std::process::exit(1)
+    }
+
     pub fn parse(mut self) -> Self {
+        for arg in self.args.iter_mut() {
+            if arg.required {
+                arg.value = ArgValue::Value(None);
+            }
+            if arg.long.is_none() && arg.short.is_none() {
+                arg.value = ArgValue::Value(None);
+            }
+        }
+
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
             if arg.starts_with("--") {
-                let arg = arg
-                    .trim_start_matches("--")
-                    .splitn(2, "=")
-                    .collect::<Vec<_>>();
-                let arg_meta = match self.args.iter().find(|a| a.long == Some(arg[0])) {
-                    Some(a) => a,
-                    None => panic!("invalid argument: {}", arg[0]),
-                };
+                let opts = arg.trim_start_matches("--").splitn(2, '=');
+                let opt = opts.next()
+                let (opt, mut val) = arg.trim_start_matches("--").splitn(2, '=').take(2);
+                let mut arg = self
+                    .args
+                    .iter_mut()
+                    .find(|e| e.long == Some(opt))
+                    .unwrap_or_else(|| todo!());
 
-                self.arg_values.insert(
-                    arg_meta.name.to_string(),
-                    if arg_meta.value {
-                        if arg.len() == 2 {
-                            ArgType::Value(arg[1].to_string())
-                        } else {
-                            match args.next() {
-                                Some(v) if !v.starts_with("-") => {
-                                    
-                                }
-                                _ => {}
+                match &mut arg.value {
+                    ArgValue::Flag(f) if !*f => *f = true,
+                    ArgValue::Counter(c) => *c += 1,
+                    ArgValue::Value(v) if v.is_none() => {
+                        if let Some(val) = {
+                            if opt.contains('=') {
+                                let mut a = opt.splitn(2, '=');
+                                opt = a.next().unwrap();
+                                a.next().map(|e| e.to_string())
+                            } else {
+                                args.next()
                             }
-                            ArgType::Value(args.next().expect(&format!("{} requires a value", arg[0])))
-                        }
-                    } else {
-                        ArgType::Flag
-                    },
-                );
+                        } {
+                            if let Some(a) = self.args.iter_mut().find(|e| e.long == Some(opt)) {
+                                a.value = ArgValue::Value(Some(val));
+                            } else {
+                                self.parse_error(&format!("unknown option '{}'", opt))
+                            }
+                        } else {
+                            self.parse_error("no value for option")
+                        };
+                    }
+                    ArgValue::List(v) => {
+                        if let Some(val) = {
+                            if opt.contains('=') {
+                                let mut a = opt.splitn(2, '=');
+                                opt = a.next().unwrap();
+                                a.next().map(|e| e.to_string())
+                            } else {
+                                args.next()
+                            }
+                        } {
+                            if let Some(a) = self.args.iter_mut().find(|e| e.long == Some(opt)) {
+                                a.value = ArgValue::Value(Some(val));
+                            } else {
+                                self.parse_error(&format!("unknown option '{}'", opt))
+                            }
+                        } else {
+                            self.parse_error("no value for option")
+                        };
+                    }
+                    // ArgValue::Flag(true) | ArgValue::Value(Some(_)) => {
+                    _ => {
+                        self.parse_error(&format!("cannot pass '{}' twice", opt))
+                    }
+                }
             } else if arg.starts_with("-") {
-                let _arg = arg
-                    .trim_start_matches("-")
-                    .splitn(2, "=")
-                    .collect::<Vec<_>>();
+            } else {
+                if let Some(a) = self.args.iter_mut().find(|e| {
+                    matches!(e.value, ArgValue::Value(None))
+                        && e.long.is_none()
+                        && e.short.is_none()
+                }) {
+                    a.value = ArgValue::Value(Some(arg));
+                }
             }
         }
-        // for arg in &self.args {
-        //     let aa = args.iter().filter(|(_, a)|
-        //         arg.short.is_some() && a == &format!("-{}", arg.short.unwrap()) ||
-        //         arg.long.is_some() && a == &format!("--{}", arg.long.unwrap())
-        //     ).collect::<Vec<_>>();
 
-        //     if arg.required && aa.len() == 0 {
-        //         panic!("Argument {} is required", arg.name);
-        //     }
-        //     // else if !arg.multiple && aa.count() > 1 {
-        //     //     panic!("Argument {} is not multiple", arg.name);
-        //     // }
-        //     match aa.first() {
-        //         Some(a) => {
-        //             if arg.value {
-        //                 self.arg_values.insert(arg.name.to_string(), ArgType::Value(args.iter().nth(a.0 + 1).unwrap().1.clone()));
-        //             } else {
-        //                 self.arg_values.insert(arg.name.to_string(), ArgType::Flag(true));
-        //             }
-        //         }
-        //         None => {
-        //             if arg.required {
-        //                 println!("{} is required", arg.name);
-        //                 std::process::exit(1);
-        //             }
-        //         }
-        //     }
-        // }
+        for arg in self.args.iter() {
+            if let ArgValue::Value(None) = arg.value {
+                self.parse_error(&format!("missing required argument '{}'", arg.name))
+            }
+        }
         self
     }
 
-    pub fn get(&self, name: &str) -> Option<&Arg> {
-        self.args.iter().find(|arg| arg.name == name)
+    pub fn get(&self, name: &str) -> &ArgValue {
+        &self.get_opt(name).unwrap()
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let args = ArgParser::new()
-            .arg(Arg {
-                name: "no capture",
-                long: Some("nocapture"),
-                ..Default::default()
-            })
-            .arg(Arg {
-                name: "has value",
-                long: Some("value"),
-                ..Default::default()
-            })
-            .parse();
-        println!("{:?}", std::env::args().collect::<Vec<String>>());
-        match args.get("no capture") {
-            Some(_) => {
-                println!("found no capture");
-            }
-            None => {}
-        }
-        println!("{:?}", args.arg_values);
+    pub fn get_opt(&self, name: &str) -> Option<&ArgValue> {
+        self.args
+            .iter()
+            .find(|arg| arg.name == name)
+            .map(|e| &e.value)
     }
 }

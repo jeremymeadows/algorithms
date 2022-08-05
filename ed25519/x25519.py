@@ -159,21 +159,40 @@ def to_hex(s):
     return ''.join('{:02X}'.format(c) for c in s)
 
 if __name__ == '__main__':
-    secret = hashlib.sha256(input('enter password: ').encode('utf8')).digest()
-    public = secret_to_public(secret)
+    # secret = hashlib.sha256(input('enter password: ').encode('utf8')).digest()
+    # secret_a = hashlib.sha256(b'a').digest()
+    # secret_b = hashlib.sha256(b'b').digest()
+    secret_a = int.from_bytes(hashlib.sha256(b'a').digest(), 'little')
+    secret_b = int.from_bytes(hashlib.sha256(b'b').digest(), 'little')
+    public_a = point_mul(secret_a, G)
+    public_b = point_mul(secret_b, G)
 
-    msg = input('enter message: ').encode('utf8')
-    sig = sign(secret, msg)
+    # print(point_mul(int.from_bytes(secret_a, 'little') * int.from_bytes(secret_b, 'little'), G))
+    # print(
+    #     point_decompress(
+    #         (int.from_bytes(secret_a, 'little') * int.from_bytes(public_b, 'little')).to_bytes()
+    #     )[0]
+    # )
+    print(point_mul(secret_a, public_b)[0])
+    print(point_mul(secret_b, public_a)[0])
+    # print(public_b[0] * secret_a)
 
-    print(
-        '''
-secret key: {}
-public key: {}
+# if __name__ == '__main__':
+#     secret = hashlib.sha256(input('enter password: ').encode('utf8')).digest()
+#     public = secret_to_public(secret)
 
-signature: {}
-verified: {}'''.format(
-        to_hex(secret),
-        to_hex(public),
-        base64.b64encode(sig),
-        verify(public, msg, sig)
-    ))
+#     msg = input('enter message: ').encode('utf8')
+#     sig = sign(secret, msg)
+
+#     print(
+#         '''
+# secret key: {}
+# public key: {}
+
+# signature: {}
+# verified: {}'''.format(
+#         to_hex(secret),
+#         to_hex(public),
+#         base64.b64encode(sig),
+#         verify(public, msg, sig)
+#     ))
