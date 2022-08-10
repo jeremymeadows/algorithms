@@ -1,17 +1,17 @@
 use std::collections::HashSet;
 
-/// Returns the case-insensitive bigram cosine similarity between two strings.
-/// A `1` means the strings are identical, while a `0` means they are completely
-/// different. Returns `NaN` if one of the strings has < 2 characters.
+/// Returns the bigram cosine similarity between two strings. A `1` means the
+/// strings are identical, while a `0` means they are completely different.
+/// Returns NaN if both strings are fewer than 2 characters.
 pub fn str_diff(a: &str, b: &str) -> f32 {
-    cos_sim(&ngram(&a.to_lowercase(), &b.to_lowercase(), 2))
+    cos_sim(&ngram(&a, &b, 2))
 }
 
-/// Returns the case-insensitive n-gram cosine similarity between two strings.
-/// A `1` means the strings are identical, while a `0` means they are completely
-/// different.
+/// Returns the n-gram cosine similarity between two strings. A `1` means the
+/// strings are identical, while a `0` means they are completely different.
+/// Returns NaN if both strings are fewer than n characters.
 pub fn str_diff_n(a: &str, b: &str, n: usize) -> f32 {
-    cos_sim(&ngram(&a.to_lowercase(), &b.to_lowercase(), n))
+    cos_sim(&ngram(&a, &b, n))
 }
 
 // Returns the term frequency of `n` consecutive characters between two strings.
@@ -53,11 +53,15 @@ fn dot_prod(a: &[u32], b: &[u32]) -> Result<u32, &'static str> {
 // Returns the cosine similarity between two vectors of equal length.
 // `S_c(A, B) = (A · B) / (||A|| ||B||)`
 fn cos_sim((a, b): &(Vec<u32>, Vec<u32>)) -> f32 {
+    if a.len() != b.len() {
+        return f32::NAN;
+    }
+
     let a_mag = (dot_prod(a, a).unwrap() as f32).sqrt();
     let b_mag = (dot_prod(b, b).unwrap() as f32).sqrt();
 
-    // use `min` and `max` to constrain floating point errors within 0..=1
-    (dot_prod(a, b).unwrap() as f32 / (a_mag * b_mag).max(0.0)).min(1.0)
+    // use `clamp` to constrain floating point errors within 0..=1
+    (dot_prod(a, b).unwrap() as f32 / (a_mag * b_mag)).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]

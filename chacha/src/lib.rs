@@ -1,7 +1,7 @@
 use std::cmp;
 
-mod rng;
-pub use rng::{ChaChaRng, Rng, RngOutput};
+#[cfg(feature = "rng")]
+pub mod rng;
 
 const CONSTANTS: [u32; 4] = [0x61707865, 0x3320646E, 0x79622D32, 0x6B206574];
 

@@ -6,6 +6,9 @@ use std::arch::asm;
 use std::cmp;
 use std::convert::Infallible;
 
+/// A random number generator using a supported CPU's random instructions.
+/// 
+/// Provides outputs for all primitive numeric types.
 pub struct CpuRng {}
 
 impl CpuRng {

@@ -1,10 +1,9 @@
-use input::{input, input_password};
+use input::{input, input_password, read_char};
 
 fn main() -> std::io::Result<()> {
-    let input = input!("integers: ", [i8])?;
-    println!("{input:?}");
-    let input = input_password!("password: ")?;
-    println!("{input:?}");
+    println!("{:?}", input!("integers: ", [i32])?);
+    println!("{:?}", input_password!("password: ")?);
+    read_char!("press any key to continue...\n");
 
     Ok(())
 }

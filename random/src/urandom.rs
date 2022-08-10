@@ -5,6 +5,9 @@ use crate::{Rng, RngOutput};
 use libc::{self, c_void};
 use std::convert::Infallible;
 
+/// A random number generator using a operating system's random number generator.
+/// 
+/// Provides outputs for all primitive numeric types.
 pub struct OsRng {}
 
 impl OsRng {
