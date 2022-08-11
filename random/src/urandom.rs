@@ -1,4 +1,5 @@
-//!
+//! Uses the `getentropy` libc method to get random numbers on supported
+//! platforms.
 
 use crate::{Rng, RngOutput};
 
@@ -42,7 +43,7 @@ macro_rules! impl_int_os_rng_output {
     };
 }
 
-impl_int_os_rng_output!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_int_os_rng_output!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl RngOutput<OsRng> for f32 {
     fn gen(g: &mut OsRng) -> Self {

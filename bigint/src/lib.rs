@@ -1,11 +1,28 @@
 #![feature(bigint_helper_methods)]
 #![feature(let_chains)]
+#![feature(step_trait)]
+
+// #[cfg(num)]
+use num_bigint;
+
+// #[cfg(num)]
+fn to_num_bigint(x: &BigInt) -> num_bigint::BigInt {
+    num_bigint::BigInt::from_bytes_le(
+        if x.signed {
+            num_bigint::Sign::Minus
+        } else {
+            num_bigint::Sign::Plus
+        },
+        &x.to_le_bytes(),
+    )
+}
 
 pub mod arithmetic;
 pub mod cmp;
 pub mod convert;
 pub mod fmt;
 pub mod logical;
+pub mod misc;
 
 #[cfg(target_pointer_width = "64")]
 type Base = u64;
@@ -24,7 +41,7 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    /// Creates a `BigInt` with the value of `0`
+    /// Creates a `BigInt` with the value of `0`.
     pub fn zero() -> Self {
         Self {
             signed: false,
@@ -32,7 +49,7 @@ impl BigInt {
         }
     }
 
-    /// Creates a `BigInt` with the value of `1`
+    /// Creates a `BigInt` with the value of `1`.
     pub fn one() -> Self {
         Self {
             signed: false,
@@ -40,12 +57,22 @@ impl BigInt {
         }
     }
 
-    /// Returns true if `self` is greater than `0`
+    /// Returns true if `self` is even.
+    pub fn is_even(&self) -> bool {
+        self.data[0] & 1 == 0
+    }
+
+    /// Returns true if `self` is odd.
+    pub fn is_odd(&self) -> bool {
+        self.data[0] & 1 == 1
+    }
+
+    /// Returns true if `self` is greater than `0`.
     pub fn is_positive(&self) -> bool {
         *self > 0
     }
 
-    /// Returns true if `self` is less than `0`
+    /// Returns true if `self` is less than `0`.
     pub fn is_negative(&self) -> bool {
         *self < 0
     }

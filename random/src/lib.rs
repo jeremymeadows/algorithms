@@ -1,4 +1,5 @@
-//!
+//! Provides an interface for random number generators, along with some hardware
+//! based implementations for supported platforms.
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_feature = "rdrand"))]
 mod rdrand;

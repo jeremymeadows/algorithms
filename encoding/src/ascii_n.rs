@@ -21,7 +21,6 @@ macro_rules! ascii_encode {
 
                     encoded += &s.chars().rev().collect::<String>()[..(e.len() + 1)];
                 }
-
                 encoded
             }
         )*
@@ -49,7 +48,6 @@ macro_rules! ascii_decode {
 
                     bytes.extend_from_slice(&x.to_be_bytes()[..(e.len() - 1)]);
                 }
-
                 bytes
             }
         )*

@@ -46,7 +46,6 @@ macro_rules! base_encode {
                 while encoded.len() % $pad as usize != 0 {
                     encoded.push('=');
                 }
-
                 encoded
             }
         )*
@@ -82,7 +81,6 @@ macro_rules! base_decode {
                 if Some(&0) == bytes.iter().last() {
                     bytes.pop().unwrap();
                 }
-
                 bytes
             }
         )*

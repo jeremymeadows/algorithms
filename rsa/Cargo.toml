@@ -1,5 +1,5 @@
 [package]
-name = "ed25519"
+name = "rsa"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,8 +7,6 @@ edition = "2021"
 
 [dependencies]
 bigint = { version = "*", path = "../bigint", features = ["num"] }
-encoding = { version = "*", path = "../encoding" }
-sha = { version = "*", path = "../sha" }
-num-integer = "*"
-num-bigint = "*"
-num-traits = "*"
+random = { version = "*", path = "../random" }
+#num-bigint = "*"
+#num-traits = "*"

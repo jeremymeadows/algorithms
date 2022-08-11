@@ -130,6 +130,12 @@ impl FromStr for BigInt {
     }
 }
 
+impl From<&BigInt> for BigInt {
+    fn from(num: &BigInt) -> Self {
+        num.clone()
+    }
+}
+
 macro_rules! impl_from_uint {
     ($($t:ty),*) => {
         $(
@@ -143,6 +149,14 @@ macro_rules! impl_from_uint {
                 type Error = TryFromBigIntError;
 
                 fn try_from(i: BigInt) -> Result<Self, Self::Error> {
+                    <$t>::try_from(&i)
+                }
+            }
+
+            impl TryFrom<&BigInt> for $t {
+                type Error = TryFromBigIntError;
+
+                fn try_from(i: &BigInt) -> Result<Self, Self::Error> {
                     if i.bits() <= <$t>::BITS as usize && let Ok(val) = <$t>::try_from(i.data[0]) {
                         Ok(val)
                     } else {
@@ -170,6 +184,14 @@ macro_rules! impl_from_int {
                 type Error = TryFromBigIntError;
 
                 fn try_from(i: BigInt) -> Result<Self, Self::Error> {
+                    <$t>::try_from(&i)
+                }
+            }
+
+            impl TryFrom<&BigInt> for $t {
+                type Error = TryFromBigIntError;
+
+                fn try_from(i: &BigInt) -> Result<Self, Self::Error> {
                     if i.bits() < <$t>::BITS as usize && let Ok(val) = <$t>::try_from(i.data[0] * i.signum() as u64) {
                         Ok(val)
                     } else {

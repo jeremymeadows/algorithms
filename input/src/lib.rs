@@ -1,5 +1,6 @@
 //! Macros to read and parse user input from standard input, with the ability to hide input
-//! characters, or read before a newline is found.
+//! characters, or read before a newline is found. Requires a platform with terminal controls in
+//! its `libc` implementation.
 
 /// Reads and parses standard input into a tuple, array, or a type which implements [`FromStr`].
 /// The prompt is optional, and will print before blocking on user input if it is provided.

@@ -4,21 +4,35 @@ use std::ops::{Mul, MulAssign};
 use crate::{Base, BigInt};
 
 impl BigInt {
-    pub fn pow(&self, exp: &BigInt) -> Self {
-        if exp == 0 {
-            return BigInt::one();
-        }
-
-        let base = self.clone();
-        let mut val = self.clone();
-        let mut exp = exp.clone();
-
-        while exp > 0 {
-            val *= base.clone();
-            exp -= 1;
-        }
-        val
+    // #[cfg(num)]
+    pub fn pow(&self, exp: impl Into<BigInt>) -> Self {
+        let exp: BigInt = exp.into();
+        let mut i = BigInt::from_le_bytes(
+            &crate::to_num_bigint(self)
+                .pow((&exp).try_into().unwrap())
+                .to_bytes_le()
+                .1,
+        );
+        i.signed = exp.is_even() || self.signed;
+        i
     }
+    // pub fn pow(&self, exp: &BigInt) -> Self {
+    //     if exp == 0 {
+    //         return BigInt::one();
+    //     } else if exp < 0 {
+    //         return BigInt::zero();
+    //     }
+
+    //     let base = self.clone();
+    //     let mut val = self.clone();
+    //     let mut exp = exp.clone();
+
+    //     while exp > 1 {
+    //         val *= base.clone();
+    //         exp -= 1;
+    //     }
+    //     val
+    // }
 }
 
 impl Mul for BigInt {
@@ -122,7 +136,7 @@ macro_rules! impl_primitive_mul {
     }
 }
 
-impl_primitive_mul!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_primitive_mul!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 #[cfg(test)]
 mod tests {

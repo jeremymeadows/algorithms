@@ -16,7 +16,6 @@ pub fn b85_encode(bytes: &[u8]) -> String {
 
         encoded += &s.chars().rev().collect::<String>()[..(e.len() + 1)];
     }
-
     encoded
 }
 
@@ -38,7 +37,6 @@ pub fn b85_decode(encoded: &str) -> Vec<u8> {
 
         bytes.extend_from_slice(&x.to_be_bytes()[..(e.len() - 1)]);
     }
-
     bytes
 }
 

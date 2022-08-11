@@ -1,4 +1,4 @@
-//!
+//! Binary to text encodings.
 
 mod ascii_n;
 mod base_pow_2;
