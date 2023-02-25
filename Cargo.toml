@@ -6,9 +6,10 @@ edition = "2021"
 [dependencies]
 argparser = { version = "*", path = "argparser" }
 bigint = { version = "*", path = "bigint" }
+blowfish = { version = "*", path = "blowfish" }
 bst = { version = "*", path = "bst" }
 cosine_diff = { version = "*", path = "cosine_diff" }
-chacha = { version = "*", path = "chacha" }
+chacha = { version = "*", path = "chacha", features = ["rng"] }
 ed25519 = { version = "*", path = "ed25519" }
 encoding = { version = "*", path = "encoding" }
 input = { version = "*", path = "input" }
